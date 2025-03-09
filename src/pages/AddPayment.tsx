@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
@@ -30,7 +31,7 @@ const AddPayment: React.FC = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const [paymentTitle, setPaymentTitle] = useState('');
-  const [totalAmount, setTotalAmount] = useState<number | null>(null);
+  const [totalAmount, setTotalAmount] = useState<string>(''); // Changed to string for input control
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
   const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
   
@@ -51,18 +52,39 @@ const AddPayment: React.FC = () => {
     setPayer(loggedInUser.name);
   }, [loggedInUser.name]);
   
+  // Handle total amount input as string but convert to number for calculations
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (/^\d*\.?\d*$/.test(value)) {
-      const amount = value === '' ? null : parseFloat(value);
-      setTotalAmount(amount);
+    
+    // Allow empty string or valid numbers with up to one decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setTotalAmount(value);
       
-      if (amount !== null) {
-        const usdc = amount * selectedCurrency.rate;
-        setUsdcEquivalent(usdc);
-      } else {
-        setUsdcEquivalent(null);
+      const numericValue = value === '' ? 0 : parseFloat(value);
+      updateUsdcEquivalent(numericValue);
+      
+      // Update split amounts if split equally is enabled
+      if (splitEqually && numericValue > 0) {
+        updateEqualSplits(numericValue);
       }
+    }
+  };
+  
+  const updateUsdcEquivalent = (amount: number) => {
+    if (amount > 0) {
+      const usdc = amount * selectedCurrency.rate;
+      setUsdcEquivalent(usdc);
+    } else {
+      setUsdcEquivalent(null);
+    }
+  };
+  
+  const updateEqualSplits = (total: number) => {
+    if (total > 0) {
+      const equalAmount = total / participants.length;
+      setParticipants(prevParticipants =>
+        prevParticipants.map(p => ({ ...p, amount: equalAmount }))
+      );
     }
   };
   
@@ -71,9 +93,15 @@ const AddPayment: React.FC = () => {
     const currency = currencies.find(c => c.code === currencyCode) || currencies[0];
     setSelectedCurrency(currency);
     
-    if (totalAmount !== null) {
-      const usdc = totalAmount * currency.rate;
+    const numericValue = totalAmount === '' ? 0 : parseFloat(totalAmount);
+    if (numericValue > 0) {
+      const usdc = numericValue * currency.rate;
       setUsdcEquivalent(usdc);
+      
+      // Also update individual amounts if split equally
+      if (splitEqually) {
+        updateEqualSplits(numericValue);
+      }
     }
   };
   
@@ -88,11 +116,11 @@ const AddPayment: React.FC = () => {
   const toggleSplitEqually = () => {
     setSplitEqually(!splitEqually);
     
-    if (!splitEqually && totalAmount !== null) {
-      const equalAmount = totalAmount / participants.length;
-      setParticipants(prevParticipants =>
-        prevParticipants.map(p => ({ ...p, amount: equalAmount }))
-      );
+    if (!splitEqually && totalAmount !== '') {
+      const numericValue = parseFloat(totalAmount);
+      if (numericValue > 0) {
+        updateEqualSplits(numericValue);
+      }
     }
   };
   
@@ -103,7 +131,7 @@ const AddPayment: React.FC = () => {
       toast.error("Please enter a payment title");
       return;
     }
-    if (totalAmount === null || totalAmount <= 0) {
+    if (totalAmount === '' || parseFloat(totalAmount) <= 0) {
       toast.error("Please enter a valid total amount");
       return;
     }
@@ -114,7 +142,8 @@ const AddPayment: React.FC = () => {
     
     if (!splitEqually) {
       const totalIndividualAmount = participants.reduce((sum, p) => sum + (p.amount || 0), 0);
-      if (Math.abs(totalIndividualAmount - totalAmount) > 0.01) {
+      const enteredTotal = parseFloat(totalAmount);
+      if (Math.abs(totalIndividualAmount - enteredTotal) > 0.01) {
         toast.error("The sum of individual amounts must equal the total amount");
         return;
       }
@@ -128,6 +157,9 @@ const AddPayment: React.FC = () => {
       setLoading(false);
     }, 1000);
   };
+  
+  // Calculate the numeric total amount 
+  const numericTotalAmount = totalAmount === '' ? 0 : parseFloat(totalAmount);
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -169,17 +201,33 @@ const AddPayment: React.FC = () => {
                 <input
                   id="total-amount"
                   type="text"
-                  value={totalAmount === null ? '' : totalAmount.toFixed(2)}
+                  value={totalAmount}
                   onChange={handleAmountChange}
                   placeholder="0.00"
                   className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
                 />
               </div>
-              {totalAmount !== null && selectedCurrency.code !== 'USDC' && (
-                <div className="text-xs text-blue-600 mt-1 pl-1">
-                  Equivalent: ${(totalAmount * selectedCurrency.rate).toFixed(2)} USDC
-                </div>
-              )}
+              
+              {/* Always show conversion box with improved styling */}
+              <div className={`mt-2 p-3 rounded-md text-sm ${numericTotalAmount > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'}`}>
+                {numericTotalAmount > 0 ? (
+                  <div>
+                    <p>
+                      Equivalent: ${(numericTotalAmount * selectedCurrency.rate).toFixed(2)} USDC
+                    </p>
+                    <p className="text-xs mt-1 text-blue-600">
+                      Rate via Google Finance: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p>Enter an amount to see USDC equivalent</p>
+                    <p className="text-xs mt-1">
+                      Rate via Google Finance: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="md:w-1/3">
@@ -200,15 +248,6 @@ const AddPayment: React.FC = () => {
               </select>
             </div>
           </div>
-          
-          {usdcEquivalent !== null && selectedCurrency.code !== 'USDC' && (
-            <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
-              Equivalent: ${usdcEquivalent.toFixed(2)} USDC
-              <p className="text-xs mt-1 text-blue-600">
-                All expenses are tracked in USDC for consistency
-              </p>
-            </div>
-          )}
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -275,7 +314,9 @@ const AddPayment: React.FC = () => {
                       disabled={splitEqually}
                       className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
-                    {participant.amount !== null && selectedCurrency.code !== 'USDC' && (
+                    
+                    {/* Always show USDC equivalent for participants */}
+                    {participant.amount !== null && participant.amount > 0 && (
                       <div className="text-xs text-blue-600 mt-1 pl-1">
                         ${(participant.amount * selectedCurrency.rate).toFixed(2)} USDC
                       </div>
