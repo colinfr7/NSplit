@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
@@ -161,6 +160,12 @@ const AddPayment: React.FC = () => {
   // Calculate the numeric total amount 
   const numericTotalAmount = totalAmount === '' ? 0 : parseFloat(totalAmount);
   
+  // Calculate USDC amounts for each participant
+  const getParticipantUsdcAmount = (participant: Participant): number => {
+    if (participant.amount === null) return 0;
+    return participant.amount * selectedCurrency.rate;
+  };
+  
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
       <div className="max-w-lg mx-auto">
@@ -295,16 +300,18 @@ const AddPayment: React.FC = () => {
                   </label>
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">{selectedCurrency.symbol}</span>
+                      <DollarSign size={14} className="text-nsplit-600" />
                     </div>
                     <input
                       type="text"
-                      value={participant.amount === null ? '' : participant.amount.toFixed(2)}
+                      value={participant.amount === null ? '' : getParticipantUsdcAmount(participant).toFixed(2)}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (/^\d*\.?\d*$/.test(value)) {
-                          const amount = value === '' ? null : parseFloat(value);
-                          handleParticipantAmountChange(participant.id, amount);
+                          // Convert back from USDC to the selected currency for internal storage
+                          const usdcAmount = value === '' ? null : parseFloat(value);
+                          const originalAmount = usdcAmount === null ? null : usdcAmount / selectedCurrency.rate;
+                          handleParticipantAmountChange(participant.id, originalAmount);
                         }
                       }}
                       placeholder="0.00"
@@ -312,12 +319,10 @@ const AddPayment: React.FC = () => {
                       className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     
-                    {/* USDC equivalent for participants with improved styling */}
-                    {participant.amount !== null && participant.amount > 0 && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-nsplit-50 px-2 py-0.5 rounded text-xs font-medium text-nsplit-700 border border-nsplit-100">
-                        ${(participant.amount * selectedCurrency.rate).toFixed(2)} USDC
-                      </div>
-                    )}
+                    {/* Display USDC label since we're already showing USDC values */}
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-nsplit-50 px-2 py-0.5 rounded text-xs font-medium text-nsplit-700 border border-nsplit-100">
+                      USDC
+                    </div>
                   </div>
                 </div>
               ))}
