@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search, Check, Calendar } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from '@/context/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 // Sample data for user suggestions - in a real app this would come from an API
 const SAMPLE_USERS = [
@@ -28,6 +31,8 @@ const CreateEvent: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState('');
+  const [eventDate, setEventDate] = useState<Date>(new Date()); // Default to today's date
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Add the current user automatically when the component mounts
   useEffect(() => {
@@ -129,6 +134,30 @@ const CreateEvent: React.FC = () => {
       setLoading(false);
     }, 1000);
   };
+
+  const handleCreateAndAddExpense = () => {
+    // Validate the form first
+    if (!eventTitle.trim()) {
+      toast.error("Please enter an event title");
+      return;
+    }
+    
+    const filledParticipants = participants.filter(p => p.name.trim() !== '');
+    if (filledParticipants.length < 1) {
+      toast.error("Please add at least 1 participant");
+      return;
+    }
+    
+    // Simulate event creation
+    setLoading(true);
+    
+    // Mock API call to create event then redirect to add expense
+    setTimeout(() => {
+      toast.success("Event created! Now add your first expense.");
+      navigate('/add-payment/123'); // Navigate to add payment page with the new event ID
+      setLoading(false);
+    }, 1000);
+  };
   
   // Filter suggestions based on search term
   const filteredSuggestions = SAMPLE_USERS.filter(user => 
@@ -163,6 +192,39 @@ const CreateEvent: React.FC = () => {
               placeholder="Weekend Trip, Dinner Party, etc."
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
             />
+          </div>
+
+          {/* Event Date Picker */}
+          <div>
+            <label htmlFor="event-date" className="block text-sm font-medium text-gray-700 mb-1">
+              Event Date
+            </label>
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <button
+                  id="event-date"
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors bg-white text-left"
+                >
+                  <span>{format(eventDate, "PPP")}</span>
+                  <Calendar size={16} className="text-gray-400" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <CalendarComponent
+                  mode="single"
+                  selected={eventDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setEventDate(date);
+                      setShowDatePicker(false);
+                    }
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           
           <div className="flex items-center justify-between">
@@ -303,9 +365,23 @@ const CreateEvent: React.FC = () => {
             </div>
           </div>
           
-          <div className="pt-4">
-            <Button type="submit" fullWidth isLoading={loading}>
-              Create Event
+          <div className="pt-4 space-y-3">
+            <Button 
+              type="button" 
+              onClick={handleCreateAndAddExpense} 
+              fullWidth 
+              isLoading={loading}
+            >
+              Create Event & Add First Expense
+            </Button>
+            
+            <Button 
+              type="submit" 
+              variant="outline" 
+              fullWidth 
+              isLoading={loading}
+            >
+              Create Event Only
             </Button>
           </div>
         </form>
