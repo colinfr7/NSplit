@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
 import Button from '@/components/Button';
@@ -11,11 +11,32 @@ interface Participant {
   amount: number | null;
 }
 
+interface CurrencyOption {
+  code: string;
+  symbol: string;
+  name: string;
+  rate: number; // Exchange rate to USDC
+}
+
+const currencies: CurrencyOption[] = [
+  { code: 'USDC', symbol: '$', name: 'USDC', rate: 1 },
+  { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', rate: 0.23 }, // Example rate: 1 MYR = 0.23 USDC
+  { code: 'USD', symbol: '$', name: 'US Dollar', rate: 1 },
+  { code: 'EUR', symbol: '€', name: 'Euro', rate: 1.08 },
+  { code: 'GBP', symbol: '£', name: 'British Pound', rate: 1.27 },
+];
+
 const AddPayment: React.FC = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const [paymentTitle, setPaymentTitle] = useState('');
   const [totalAmount, setTotalAmount] = useState<number | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
+  const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
+  
+  // Mock logged-in user (in real app, this would come from auth context)
+  const loggedInUser = { id: '1', name: 'Alex' };
+  
   const [payer, setPayer] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([
     { id: '1', name: 'Alex', amount: null },
@@ -25,11 +46,37 @@ const AddPayment: React.FC = () => {
   const [splitEqually, setSplitEqually] = useState(true);
   const [loading, setLoading] = useState(false);
   
+  // Set logged-in user as default payer
+  useEffect(() => {
+    setPayer(loggedInUser.name);
+  }, []);
+  
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // Allow only numbers and one decimal point
     if (/^\d*\.?\d*$/.test(value)) {
-      setTotalAmount(value === '' ? null : parseFloat(value));
+      const amount = value === '' ? null : parseFloat(value);
+      setTotalAmount(amount);
+      
+      // Calculate USDC equivalent
+      if (amount !== null) {
+        const usdc = amount * selectedCurrency.rate;
+        setUsdcEquivalent(usdc);
+      } else {
+        setUsdcEquivalent(null);
+      }
+    }
+  };
+  
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const currencyCode = e.target.value;
+    const currency = currencies.find(c => c.code === currencyCode) || currencies[0];
+    setSelectedCurrency(currency);
+    
+    // Recalculate USDC equivalent
+    if (totalAmount !== null) {
+      const usdc = totalAmount * currency.rate;
+      setUsdcEquivalent(usdc);
     }
   };
   
@@ -72,7 +119,7 @@ const AddPayment: React.FC = () => {
     
     if (!splitEqually) {
       const totalIndividualAmount = participants.reduce((sum, p) => sum + (p.amount || 0), 0);
-      if (totalIndividualAmount !== totalAmount) {
+      if (Math.abs(totalIndividualAmount - totalAmount) > 0.01) { // Allow small rounding difference
         toast.error("The sum of individual amounts must equal the total amount");
         return;
       }
@@ -116,24 +163,53 @@ const AddPayment: React.FC = () => {
             />
           </div>
           
-          <div>
-            <label htmlFor="total-amount" className="block text-sm font-medium text-gray-700 mb-1">
-              Total Amount
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <DollarSign size={16} className="text-gray-500" />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-grow">
+              <label htmlFor="total-amount" className="block text-sm font-medium text-gray-700 mb-1">
+                Total Amount
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500">{selectedCurrency.symbol}</span>
+                </div>
+                <input
+                  id="total-amount"
+                  type="text"
+                  value={totalAmount === null ? '' : totalAmount.toFixed(2)}
+                  onChange={handleAmountChange}
+                  placeholder="0.00"
+                  className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                />
               </div>
-              <input
-                id="total-amount"
-                type="text"
-                value={totalAmount === null ? '' : totalAmount.toFixed(2)}
-                onChange={handleAmountChange}
-                placeholder="0.00"
-                className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-              />
+            </div>
+            
+            <div className="md:w-1/3">
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
+                Currency
+              </label>
+              <select
+                id="currency"
+                value={selectedCurrency.code}
+                onChange={handleCurrencyChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+              >
+                {currencies.map(currency => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.code} - {currency.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+          
+          {usdcEquivalent !== null && selectedCurrency.code !== 'USDC' && (
+            <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
+              Equivalent: ${usdcEquivalent.toFixed(2)} USDC
+              <p className="text-xs mt-1 text-blue-600">
+                All expenses are tracked in USDC for consistency
+              </p>
+            </div>
+          )}
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -151,6 +227,9 @@ const AddPayment: React.FC = () => {
                     className="mr-2 focus:ring-nsplit-500 focus:border-nsplit-500"
                   />
                   {participant.name}
+                  {participant.id === loggedInUser.id && (
+                    <span className="ml-2 text-xs font-medium text-nsplit-600">(You)</span>
+                  )}
                 </label>
               ))}
             </div>
@@ -175,10 +254,13 @@ const AddPayment: React.FC = () => {
                 <div key={participant.id} className="flex items-center">
                   <label className="w-24 text-sm font-medium text-gray-700">
                     {participant.name}
+                    {participant.id === loggedInUser.id && (
+                      <span className="ml-1 text-xs text-nsplit-600">(You)</span>
+                    )}
                   </label>
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <DollarSign size={16} className="text-gray-500" />
+                      <span className="text-gray-500">{selectedCurrency.symbol}</span>
                     </div>
                     <input
                       type="text"
