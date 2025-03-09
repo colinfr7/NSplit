@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
@@ -35,10 +34,8 @@ const AddPayment: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
   const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
   
-  // Get the logged-in user from auth context
   const { user } = useAuth();
   
-  // Mock logged-in user (in real app, this would come from auth context)
   const loggedInUser = { id: '1', name: user?.displayName || 'Alex' };
   
   const [payer, setPayer] = useState('');
@@ -50,19 +47,16 @@ const AddPayment: React.FC = () => {
   const [splitEqually, setSplitEqually] = useState(true);
   const [loading, setLoading] = useState(false);
   
-  // Set logged-in user as default payer
   useEffect(() => {
     setPayer(loggedInUser.name);
-  }, []);
+  }, [loggedInUser.name]);
   
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow only numbers and one decimal point
     if (/^\d*\.?\d*$/.test(value)) {
       const amount = value === '' ? null : parseFloat(value);
       setTotalAmount(amount);
       
-      // Calculate USDC equivalent
       if (amount !== null) {
         const usdc = amount * selectedCurrency.rate;
         setUsdcEquivalent(usdc);
@@ -77,7 +71,6 @@ const AddPayment: React.FC = () => {
     const currency = currencies.find(c => c.code === currencyCode) || currencies[0];
     setSelectedCurrency(currency);
     
-    // Recalculate USDC equivalent
     if (totalAmount !== null) {
       const usdc = totalAmount * currency.rate;
       setUsdcEquivalent(usdc);
@@ -95,7 +88,6 @@ const AddPayment: React.FC = () => {
   const toggleSplitEqually = () => {
     setSplitEqually(!splitEqually);
     
-    // If toggling to split equally, clear individual amounts
     if (!splitEqually && totalAmount !== null) {
       const equalAmount = totalAmount / participants.length;
       setParticipants(prevParticipants =>
@@ -107,7 +99,6 @@ const AddPayment: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate
     if (!paymentTitle.trim()) {
       toast.error("Please enter a payment title");
       return;
@@ -123,7 +114,7 @@ const AddPayment: React.FC = () => {
     
     if (!splitEqually) {
       const totalIndividualAmount = participants.reduce((sum, p) => sum + (p.amount || 0), 0);
-      if (Math.abs(totalIndividualAmount - totalAmount) > 0.01) { // Allow small rounding difference
+      if (Math.abs(totalIndividualAmount - totalAmount) > 0.01) {
         toast.error("The sum of individual amounts must equal the total amount");
         return;
       }
@@ -131,7 +122,6 @@ const AddPayment: React.FC = () => {
     
     setLoading(true);
     
-    // Mock API call
     setTimeout(() => {
       toast.success("Payment added successfully!");
       navigate(`/event/${eventId}`);
@@ -174,7 +164,7 @@ const AddPayment: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500">{selectedCurrency.symbol}</span>
+                  <span className="text-gray-500 text-sm">{selectedCurrency.symbol}</span>
                 </div>
                 <input
                   id="total-amount"
@@ -185,6 +175,11 @@ const AddPayment: React.FC = () => {
                   className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
                 />
               </div>
+              {totalAmount !== null && selectedCurrency.code !== 'USDC' && (
+                <div className="text-xs text-blue-600 mt-1 pl-1">
+                  Equivalent: ${(totalAmount * selectedCurrency.rate).toFixed(2)} USDC
+                </div>
+              )}
             </div>
             
             <div className="md:w-1/3">
@@ -264,7 +259,7 @@ const AddPayment: React.FC = () => {
                   </label>
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500">{selectedCurrency.symbol}</span>
+                      <span className="text-gray-500 text-sm">{selectedCurrency.symbol}</span>
                     </div>
                     <input
                       type="text"
@@ -281,7 +276,7 @@ const AddPayment: React.FC = () => {
                       className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     {participant.amount !== null && selectedCurrency.code !== 'USDC' && (
-                      <div className="text-xs text-blue-600 mt-1">
+                      <div className="text-xs text-blue-600 mt-1 pl-1">
                         ${(participant.amount * selectedCurrency.rate).toFixed(2)} USDC
                       </div>
                     )}
