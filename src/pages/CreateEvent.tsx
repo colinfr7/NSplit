@@ -1,30 +1,68 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Users, Map, Clock } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users } from 'lucide-react';
 import Button from '@/components/Button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const [eventTitle, setEventTitle] = useState('');
+  const [participants, setParticipants] = useState(['', '']);
+  const [loading, setLoading] = useState(false);
+  
+  const addParticipant = () => {
+    setParticipants([...participants, '']);
+  };
+  
+  const removeParticipant = (index: number) => {
+    // Don't allow removing if only 2 participants remain
+    if (participants.length <= 2) {
+      toast.error("At least 2 participants are required");
+      return;
+    }
+    
+    const newParticipants = [...participants];
+    newParticipants.splice(index, 1);
+    setParticipants(newParticipants);
+  };
+  
+  const handleParticipantChange = (index: number, value: string) => {
+    const newParticipants = [...participants];
+    newParticipants[index] = value;
+    setParticipants(newParticipants);
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, we would save the event to the database here
     
-    toast({
-      title: "Event created!",
-      description: "Your event has been created successfully.",
-    });
+    // Simple validation
+    if (!eventTitle.trim()) {
+      toast.error("Please enter an event title");
+      return;
+    }
     
-    // Redirect to the event detail page (with a fake ID for now)
-    navigate('/event/123');
+    const filledParticipants = participants.filter(p => p.trim() !== '');
+    if (filledParticipants.length < 2) {
+      toast.error("Please add at least 2 participants");
+      return;
+    }
+    
+    // Simulate form submission
+    setLoading(true);
+    
+    // Mock API call
+    setTimeout(() => {
+      // Success - go to the new event page
+      toast.success("Event created successfully!");
+      navigate('/event/123'); // In a real app, this would be the new event ID
+      setLoading(false);
+    }, 1000);
   };
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-lg mx-auto">
         <button 
           onClick={() => navigate(-1)} 
           className="mb-6 flex items-center text-nsplit-600 hover:text-nsplit-700"
@@ -36,114 +74,68 @@ const CreateEvent: React.FC = () => {
         <h1 className="text-2xl md:text-3xl font-bold mb-6">Create New Event</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="eventName" className="block text-sm font-medium text-gray-700 mb-1">
-                Event Name
+          <div>
+            <label htmlFor="event-title" className="block text-sm font-medium text-gray-700 mb-1">
+              Event Title
+            </label>
+            <input
+              id="event-title"
+              type="text"
+              value={eventTitle}
+              onChange={(e) => setEventTitle(e.target.value)}
+              placeholder="Weekend Trip, Dinner Party, etc."
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+            />
+          </div>
+          
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                <div className="flex items-center">
+                  <Users size={16} className="mr-2" />
+                  Participants
+                </div>
               </label>
-              <div className="relative">
-                <input
-                  id="eventName"
-                  type="text"
-                  placeholder="e.g., Weekend Trip to Bali"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-                  required
-                />
-              </div>
+              <span className="text-xs text-gray-500">{participants.length} people</span>
             </div>
             
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description (Optional)
-              </label>
-              <textarea
-                id="description"
-                rows={3}
-                placeholder="Add any details about this event..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar size={16} className="text-gray-400" />
-                  </div>
+            <div className="space-y-3">
+              {participants.map((participant, index) => (
+                <div key={index} className="flex items-center">
                   <input
-                    id="startDate"
-                    type="date"
-                    className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-                    required
+                    type="text"
+                    value={participant}
+                    onChange={(e) => handleParticipantChange(index, e.target.value)}
+                    placeholder={index === 0 ? "You" : `Person ${index + 1}`}
+                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
                   />
+                  {participants.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeParticipant(index)}
+                      className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
                 </div>
-              </div>
-              
-              <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date (Optional)
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar size={16} className="text-gray-400" />
-                  </div>
-                  <input
-                    id="endDate"
-                    type="date"
-                    className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-                  />
-                </div>
-              </div>
+              ))}
             </div>
             
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                Location (Optional)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Map size={16} className="text-gray-400" />
-                </div>
-                <input
-                  id="location"
-                  type="text"
-                  placeholder="e.g., Bali, Indonesia"
-                  className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="participants" className="block text-sm font-medium text-gray-700 mb-1">
-                Participants
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Users size={16} className="text-gray-400" />
-                </div>
-                <input
-                  id="participants"
-                  type="text"
-                  placeholder="Add emails, separated by commas"
-                  className="w-full pl-10 px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Participants will receive an invitation to join this event.
-              </p>
-            </div>
-            
-            <div className="pt-4">
-              <Button
-                type="submit"
-                fullWidth
-              >
-                Create Event
-              </Button>
-            </div>
+            <button
+              type="button"
+              onClick={addParticipant}
+              className="mt-3 flex items-center text-sm font-medium text-nsplit-600 hover:text-nsplit-700"
+            >
+              <Plus size={16} className="mr-1" />
+              Add Another Person
+            </button>
+          </div>
+          
+          <div className="pt-4">
+            <Button type="submit" fullWidth isLoading={loading}>
+              Create Event
+            </Button>
           </div>
         </form>
       </div>

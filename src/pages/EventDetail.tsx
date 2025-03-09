@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, DollarSign, UserCircle, Users, BarChart, Download } from 'lucide-react';
+import { ArrowLeft, Plus, DollarSign, UserCircle, Users, BarChart, Download, Calendar } from 'lucide-react';
 import Button from '@/components/Button';
 import ExpenseCard from '@/components/ExpenseCard';
 import BalanceCard from '@/components/BalanceCard';
@@ -78,7 +78,7 @@ const EventDetail: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2 text-gray-500 mb-6">
-          <Clock size={16} />
+          <Calendar size={16} />
           <span>{event.date}</span>
           <span className="mx-2">•</span>
           <Users size={16} />
