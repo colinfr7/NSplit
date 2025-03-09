@@ -1,27 +1,66 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from '@/context/AuthContext';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+// Sample data for user suggestions - in a real app this would come from an API
+const SAMPLE_USERS = [
+  { id: 'user1', name: 'Alex Johnson' },
+  { id: 'user2', name: 'Maria Garcia' },
+  { id: 'user3', name: 'John Smith' },
+  { id: 'user4', name: 'Sarah Lee' },
+  { id: 'user5', name: 'David Kim' },
+];
 
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [eventTitle, setEventTitle] = useState('');
-  const [participants, setParticipants] = useState(['', '']);
+  const [participants, setParticipants] = useState<{id: string; name: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(true); // Default to public
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showQRCode, setShowQRCode] = useState(false);
+  
+  // Add the current user automatically when the component mounts
+  useEffect(() => {
+    if (user) {
+      const currentUser = {
+        id: user.uid,
+        name: user.displayName || 'You (current user)',
+      };
+      
+      // Only add if the user is not already in the participants list
+      setParticipants(prev => {
+        if (!prev.some(p => p.id === user.uid)) {
+          return [currentUser];
+        }
+        return prev;
+      });
+    }
+  }, [user]);
   
   const addParticipant = () => {
-    setParticipants([...participants, '']);
+    setParticipants([...participants, {id: `new-${Date.now()}`, name: ''}]);
+    setSearchTerm('');
   };
   
   const removeParticipant = (index: number) => {
-    // Don't allow removing if only 2 participants remain
-    if (participants.length <= 2) {
-      toast.error("At least 2 participants are required");
+    // Don't allow removing the current user
+    if (user && participants[index].id === user.uid) {
+      toast.error("You cannot remove yourself from the event");
+      return;
+    }
+    
+    // Ensure we have at least 1 participant (the current user)
+    if (participants.length <= 1) {
+      toast.error("At least 1 participant is required");
       return;
     }
     
@@ -31,9 +70,38 @@ const CreateEvent: React.FC = () => {
   };
   
   const handleParticipantChange = (index: number, value: string) => {
+    // Don't allow editing the current user
+    if (user && participants[index].id === user.uid) {
+      return;
+    }
+    
     const newParticipants = [...participants];
-    newParticipants[index] = value;
+    newParticipants[index] = {
+      ...newParticipants[index],
+      name: value
+    };
     setParticipants(newParticipants);
+    setSearchTerm(value);
+  };
+  
+  const handleSelectUser = (selectedUser: typeof SAMPLE_USERS[0]) => {
+    // Check if user is already in participants
+    if (participants.some(p => p.id === selectedUser.id)) {
+      toast.error("This person is already in the event");
+      return;
+    }
+    
+    // Find the last empty participant slot and fill it, or add a new one
+    const emptyIndex = participants.findIndex(p => p.name === '');
+    if (emptyIndex !== -1) {
+      const newParticipants = [...participants];
+      newParticipants[emptyIndex] = selectedUser;
+      setParticipants(newParticipants);
+    } else {
+      setParticipants([...participants, selectedUser]);
+    }
+    
+    setSearchTerm('');
   };
   
   const toggleVisibility = () => {
@@ -49,9 +117,9 @@ const CreateEvent: React.FC = () => {
       return;
     }
     
-    const filledParticipants = participants.filter(p => p.trim() !== '');
-    if (filledParticipants.length < 2) {
-      toast.error("Please add at least 2 participants");
+    const filledParticipants = participants.filter(p => p.name.trim() !== '');
+    if (filledParticipants.length < 1) {
+      toast.error("Please add at least 1 participant");
       return;
     }
     
@@ -66,6 +134,13 @@ const CreateEvent: React.FC = () => {
       setLoading(false);
     }, 1000);
   };
+  
+  // Filter suggestions based on search term
+  const filteredSuggestions = SAMPLE_USERS.filter(user => 
+    searchTerm && 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    !participants.some(p => p.id === user.id)
+  );
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -139,20 +214,74 @@ const CreateEvent: React.FC = () => {
                   Participants
                 </div>
               </label>
-              <span className="text-xs text-gray-500">{participants.length} people</span>
+              <div className="flex items-center space-x-2">
+                <Popover open={showQRCode} onOpenChange={setShowQRCode}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-sm text-nsplit-600 flex items-center hover:text-nsplit-700"
+                    >
+                      <QrCode size={16} className="mr-1" />
+                      QR Join
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80" align="end">
+                    <div className="p-4 space-y-4">
+                      <h3 className="font-medium text-center">Join this event</h3>
+                      <div className="bg-white border p-1 rounded-md mx-auto w-60 h-60 flex items-center justify-center">
+                        <div className="text-center text-gray-500 text-sm">
+                          QR code will appear here after event creation
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">
+                        Scan this code to join the event directly
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <span className="text-xs text-gray-500">{participants.length} {participants.length === 1 ? 'person' : 'people'}</span>
+              </div>
             </div>
             
             <div className="space-y-3">
               {participants.map((participant, index) => (
                 <div key={index} className="flex items-center">
-                  <input
-                    type="text"
-                    value={participant}
-                    onChange={(e) => handleParticipantChange(index, e.target.value)}
-                    placeholder={index === 0 ? "You" : `Person ${index + 1}`}
-                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-                  />
-                  {participants.length > 2 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div className="relative flex-grow">
+                        <input
+                          type="text"
+                          value={participant.name}
+                          onChange={(e) => handleParticipantChange(index, e.target.value)}
+                          placeholder={index === 0 && user ? "You" : `Person ${index + 1}`}
+                          className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors ${user && participant.id === user.uid ? 'bg-gray-100' : ''}`}
+                          disabled={user && participant.id === user.uid}
+                        />
+                        {index === participants.length - 1 && participant.name && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <Search size={16} className="text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    </PopoverTrigger>
+                    {filteredSuggestions.length > 0 && index === participants.length - 1 && (
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <div className="overflow-y-auto max-h-56">
+                          {filteredSuggestions.map((suggestion) => (
+                            <div
+                              key={suggestion.id}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleSelectUser(suggestion)}
+                            >
+                              {suggestion.name}
+                            </div>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    )}
+                  </Popover>
+                  
+                  {!(user && participant.id === user.uid) && (
                     <button
                       type="button"
                       onClick={() => removeParticipant(index)}
