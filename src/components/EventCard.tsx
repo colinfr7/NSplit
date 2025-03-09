@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users } from 'lucide-react';
+import { Calendar, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface EventCardProps {
   event: {
@@ -10,11 +10,17 @@ interface EventCardProps {
     date: string;
     participants: number;
     totalExpenses: number;
+    userBalance?: number; // Added userBalance property
   };
 }
 
 const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const navigate = useNavigate();
+  
+  // Determine if user has a positive, negative, or neutral balance
+  const hasBalance = event.userBalance !== undefined;
+  const isPositive = hasBalance && event.userBalance > 0;
+  const isNegative = hasBalance && event.userBalance < 0;
   
   return (
     <div 
@@ -38,9 +44,33 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
         
         <div className="text-right">
-          <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-nsplit-50 text-nsplit-600 text-xs font-medium">
-            Active
-          </div>
+          {hasBalance ? (
+            <div className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full ${
+              isPositive 
+                ? 'bg-green-50 text-green-600' 
+                : isNegative 
+                  ? 'bg-red-50 text-red-600' 
+                  : 'bg-gray-50 text-gray-600'
+            } text-xs font-medium`}>
+              {isPositive && (
+                <>
+                  <ArrowUpRight size={12} className="mr-1" />
+                  Get back ${Math.abs(event.userBalance).toFixed(2)}
+                </>
+              )}
+              {isNegative && (
+                <>
+                  <ArrowDownRight size={12} className="mr-1" />
+                  Owe ${Math.abs(event.userBalance).toFixed(2)}
+                </>
+              )}
+              {!isPositive && !isNegative && 'Settled up'}
+            </div>
+          ) : (
+            <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-nsplit-50 text-nsplit-600 text-xs font-medium">
+              Active
+            </div>
+          )}
         </div>
       </div>
     </div>

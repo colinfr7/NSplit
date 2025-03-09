@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Button from './Button';
 
 interface BalanceCardProps {
@@ -10,6 +10,8 @@ interface BalanceCardProps {
 
 const BalanceCard: React.FC<BalanceCardProps> = ({ user, balance }) => {
   const isPositive = balance > 0;
+  const isNegative = balance < 0;
+  const isZero = balance === 0;
   
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
@@ -22,13 +24,22 @@ const BalanceCard: React.FC<BalanceCardProps> = ({ user, balance }) => {
           </div>
           <div>
             <h3 className="font-medium text-gray-900">{user}</h3>
-            <p className={`text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-              {isPositive ? 'gets back' : 'owes'} ${Math.abs(balance).toFixed(2)}
-            </p>
+            <div className="flex items-center">
+              {isPositive && <ArrowUpRight size={14} className="text-green-600 mr-1" />}
+              {isNegative && <ArrowDownRight size={14} className="text-red-600 mr-1" />}
+              <p className={`text-sm ${
+                isPositive ? 'text-green-600' : 
+                isNegative ? 'text-red-600' : 
+                'text-gray-600'
+              }`}>
+                {isPositive ? 'gets back' : isNegative ? 'owes' : 'settled up'} 
+                {!isZero && ` $${Math.abs(balance).toFixed(2)}`}
+              </p>
+            </div>
           </div>
         </div>
         
-        {!isPositive && (
+        {isNegative && (
           <Button size="sm" variant="outline">
             Pay {user} <ArrowRight size={14} className="ml-1" />
           </Button>
