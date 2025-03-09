@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search, Check } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +27,7 @@ const CreateEvent: React.FC = () => {
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState('');
   
   // Add the current user automatically when the component mounts
   useEffect(() => {
@@ -47,34 +48,35 @@ const CreateEvent: React.FC = () => {
   }, [user]);
   
   const addParticipant = () => {
-    setParticipants([...participants, {id: `new-${Date.now()}`, name: ''}]);
+    // Check if there's a name in the input field
+    if (newParticipantName.trim()) {
+      const newParticipant = {
+        id: `new-${Date.now()}`,
+        name: newParticipantName.trim()
+      };
+      setParticipants([...participants, newParticipant]);
+      setNewParticipantName(''); // Clear the input field
+    } else {
+      // If empty, create an empty participant slot
+      setParticipants([...participants, {id: `new-${Date.now()}`, name: ''}]);
+    }
     setSearchTerm('');
   };
   
   const removeParticipant = (index: number) => {
-    // Don't allow removing the current user
-    if (user && participants[index].id === user.uid) {
-      toast.error("You cannot remove yourself from the event");
-      return;
-    }
-    
-    // Ensure we have at least 1 participant (the current user)
-    if (participants.length <= 1) {
-      toast.error("At least 1 participant is required");
-      return;
-    }
-    
+    // Allow removing the current user (changed behavior)
     const newParticipants = [...participants];
     newParticipants.splice(index, 1);
     setParticipants(newParticipants);
+    
+    // Show a toast if the user removes themselves
+    if (user && participants[index].id === user.uid) {
+      toast("You removed yourself from the event");
+    }
   };
   
   const handleParticipantChange = (index: number, value: string) => {
-    // Don't allow editing the current user
-    if (user && participants[index].id === user.uid) {
-      return;
-    }
-    
+    // Allow editing participant names (even current user)
     const newParticipants = [...participants];
     newParticipants[index] = {
       ...newParticipants[index],
@@ -91,16 +93,9 @@ const CreateEvent: React.FC = () => {
       return;
     }
     
-    // Find the last empty participant slot and fill it, or add a new one
-    const emptyIndex = participants.findIndex(p => p.name === '');
-    if (emptyIndex !== -1) {
-      const newParticipants = [...participants];
-      newParticipants[emptyIndex] = selectedUser;
-      setParticipants(newParticipants);
-    } else {
-      setParticipants([...participants, selectedUser]);
-    }
-    
+    // Add the selected user directly
+    setParticipants([...participants, selectedUser]);
+    setNewParticipantName(''); // Clear the input field
     setSearchTerm('');
   };
   
@@ -137,8 +132,8 @@ const CreateEvent: React.FC = () => {
   
   // Filter suggestions based on search term
   const filteredSuggestions = SAMPLE_USERS.filter(user => 
-    searchTerm && 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    newParticipantName && 
+    user.name.toLowerCase().includes(newParticipantName.toLowerCase()) &&
     !participants.some(p => p.id === user.id)
   );
   
@@ -246,62 +241,66 @@ const CreateEvent: React.FC = () => {
             <div className="space-y-3">
               {participants.map((participant, index) => (
                 <div key={index} className="flex items-center">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <div className="relative flex-grow">
-                        <input
-                          type="text"
-                          value={participant.name}
-                          onChange={(e) => handleParticipantChange(index, e.target.value)}
-                          placeholder={index === 0 && user ? "You" : `Person ${index + 1}`}
-                          className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors ${user && participant.id === user.uid ? 'bg-gray-100' : ''}`}
-                          disabled={user && participant.id === user.uid}
-                        />
-                        {index === participants.length - 1 && participant.name && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Search size={16} className="text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverTrigger>
-                    {filteredSuggestions.length > 0 && index === participants.length - 1 && (
-                      <PopoverContent className="w-[200px] p-0" align="start">
-                        <div className="overflow-y-auto max-h-56">
-                          {filteredSuggestions.map((suggestion) => (
-                            <div
-                              key={suggestion.id}
-                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleSelectUser(suggestion)}
-                            >
-                              {suggestion.name}
-                            </div>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    )}
-                  </Popover>
-                  
-                  {!(user && participant.id === user.uid) && (
-                    <button
-                      type="button"
-                      onClick={() => removeParticipant(index)}
-                      className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  )}
+                  <input
+                    type="text"
+                    value={participant.name}
+                    onChange={(e) => handleParticipantChange(index, e.target.value)}
+                    placeholder={`Person ${index + 1}`}
+                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeParticipant(index)}
+                    className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               ))}
             </div>
             
-            <button
-              type="button"
-              onClick={addParticipant}
-              className="mt-3 flex items-center text-sm font-medium text-nsplit-600 hover:text-nsplit-700"
-            >
-              <Plus size={16} className="mr-1" />
-              Add Another Person
-            </button>
+            <div className="mt-3 flex">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="flex-grow relative">
+                    <input
+                      type="text"
+                      value={newParticipantName}
+                      onChange={(e) => setNewParticipantName(e.target.value)}
+                      placeholder="Add a new participant..."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                    />
+                    {newParticipantName && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <Search size={16} className="text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                </PopoverTrigger>
+                {filteredSuggestions.length > 0 && (
+                  <PopoverContent className="w-[200px] p-0" align="start">
+                    <div className="overflow-y-auto max-h-56">
+                      {filteredSuggestions.map((suggestion) => (
+                        <div
+                          key={suggestion.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleSelectUser(suggestion)}
+                        >
+                          {suggestion.name}
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                )}
+              </Popover>
+              <button
+                type="button"
+                onClick={addParticipant}
+                className="px-3 py-2 bg-nsplit-600 text-white rounded-r-md hover:bg-nsplit-700 focus:outline-none focus:ring-2 focus:ring-nsplit-500"
+              >
+                <Check size={16} />
+              </button>
+            </div>
           </div>
           
           <div className="pt-4">
