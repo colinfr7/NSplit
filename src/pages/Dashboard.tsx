@@ -1,12 +1,22 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard } from 'lucide-react';
 import Button from '@/components/Button';
 import EventCard from '@/components/EventCard';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  
+  // Redirect if not authenticated
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/sign-in?redirect=/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
   
   // Mock events data with user balance information
   const events = [
@@ -36,9 +46,41 @@ const Dashboard: React.FC = () => {
     }
   ];
   
+  // Mock payment actions based on algorithm
+  const paymentActions = [
+    {
+      id: 'pay1',
+      type: 'owe',
+      user: 'Jamie',
+      amount: 45.25,
+      event: 'Dinner at Bottega'
+    },
+    {
+      id: 'pay2',
+      type: 'receive',
+      user: 'Alex',
+      amount: 85.50,
+      event: 'Weekend Trip to Bali'
+    }
+  ];
+  
   // Calculate total balance
   const totalBalance = events.reduce((sum, event) => sum + (event.userBalance || 0), 0);
   const isPositiveTotalBalance = totalBalance >= 0;
+  
+  const handlePayNow = (userId: string, amount: number) => {
+    toast.success(`Payment of $${amount.toFixed(2)} initiated`);
+    // In a real app, this would open a payment flow
+  };
+  
+  const handleSendReminder = (userId: string, amount: number) => {
+    toast.success(`Reminder sent to collect $${amount.toFixed(2)}`);
+    // In a real app, this would send a notification/email
+  };
+  
+  if (!isAuthenticated) {
+    return null; // Don't render anything while redirecting
+  }
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -67,6 +109,57 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
         
+        {/* Payment Actions */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+          <h2 className="text-lg font-semibold mb-4">Payments</h2>
+          
+          {paymentActions.length > 0 ? (
+            <div className="space-y-4">
+              {paymentActions.map(action => (
+                <div key={action.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">
+                      {action.type === 'owe' ? 'You owe' : 'You receive'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {action.type === 'owe' ? `Pay ${action.user}` : `From ${action.user}`} 
+                      <span className="mx-1">•</span>
+                      {action.event}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className={`font-semibold mr-3 ${
+                      action.type === 'owe' ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      ${action.amount.toFixed(2)}
+                    </p>
+                    {action.type === 'owe' ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handlePayNow(action.user, action.amount)}
+                      >
+                        <CreditCard size={14} className="mr-1" />
+                        Pay Now
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSendReminder(action.user, action.amount)}
+                      >
+                        <Send size={14} className="mr-1" />
+                        Remind
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-4">No pending payments</p>
+          )}
+        </div>
+        
         {/* Actions */}
         <div className="flex space-x-3 mb-8">
           <Button 
@@ -78,7 +171,7 @@ const Dashboard: React.FC = () => {
           </Button>
           <Button 
             variant="outline"
-            onClick={() => navigate('/event/456/add-payment')}
+            onClick={() => navigate('/add-payment')}
             className="flex-1"
           >
             <Plus size={16} className="mr-2" />
@@ -95,8 +188,6 @@ const Dashboard: React.FC = () => {
             ))}
           </div>
         </div>
-        
-        {/* Recent Activity (can be added later) */}
       </div>
     </div>
   );
