@@ -196,7 +196,7 @@ const AddPayment: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-sm">{selectedCurrency.symbol}</span>
+                  <span className="text-gray-500 sm:text-sm mr-1">{selectedCurrency.symbol}</span>
                 </div>
                 <input
                   id="total-amount"
@@ -204,29 +204,26 @@ const AddPayment: React.FC = () => {
                   value={totalAmount}
                   onChange={handleAmountChange}
                   placeholder="0.00"
-                  className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                  className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
                 />
               </div>
               
               {/* Always show conversion box with improved styling */}
-              <div className={`mt-2 p-3 rounded-md text-sm ${numericTotalAmount > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'}`}>
-                {numericTotalAmount > 0 ? (
-                  <div>
-                    <p>
-                      Equivalent: ${(numericTotalAmount * selectedCurrency.rate).toFixed(2)} USDC
-                    </p>
-                    <p className="text-xs mt-1 text-blue-600">
-                      Rate via Google Finance: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC
-                    </p>
+              <div className="mt-2 p-3 rounded-md bg-gradient-to-r from-nsplit-50 to-blue-50 border border-nsplit-100 shadow-sm">
+                <div className="flex flex-col">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">USDC Equivalent:</span>
+                    <span className="text-lg font-semibold text-nsplit-800">
+                      ${numericTotalAmount > 0 
+                        ? (numericTotalAmount * selectedCurrency.rate).toFixed(2) 
+                        : '0.00'}
+                    </span>
                   </div>
-                ) : (
-                  <div>
-                    <p>Enter an amount to see USDC equivalent</p>
-                    <p className="text-xs mt-1">
-                      Rate via Google Finance: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC
-                    </p>
+                  <div className="text-xs text-nsplit-600 mt-1 flex justify-end items-center">
+                    <span>Rate: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC</span>
+                    <span className="ml-1 text-nsplit-400">(via Google Finance)</span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
             
@@ -298,7 +295,7 @@ const AddPayment: React.FC = () => {
                   </label>
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm">{selectedCurrency.symbol}</span>
+                      <span className="text-gray-500 sm:text-sm">{selectedCurrency.symbol}</span>
                     </div>
                     <input
                       type="text"
@@ -312,12 +309,12 @@ const AddPayment: React.FC = () => {
                       }}
                       placeholder="0.00"
                       disabled={splitEqually}
-                      className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     
-                    {/* Always show USDC equivalent for participants */}
+                    {/* USDC equivalent for participants with improved styling */}
                     {participant.amount !== null && participant.amount > 0 && (
-                      <div className="text-xs text-blue-600 mt-1 pl-1">
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-nsplit-50 px-2 py-0.5 rounded text-xs font-medium text-nsplit-700 border border-nsplit-100">
                         ${(participant.amount * selectedCurrency.rate).toFixed(2)} USDC
                       </div>
                     )}
