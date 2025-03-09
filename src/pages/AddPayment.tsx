@@ -713,6 +713,36 @@ const AddPayment: React.FC = () => {
                 </label>
               ))}
             </div>
+            
+            {/* Participant Management Options - Directly connected to Paid By */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 pl-6">
+              <button
+                type="button"
+                onClick={() => setShowQRModal(true)}
+                className="text-xs flex items-center text-nsplit-600 bg-nsplit-50 px-2 py-1 rounded border border-nsplit-100 hover:bg-nsplit-100"
+              >
+                <QrCode size={12} className="mr-1" />
+                Share QR Code
+              </button>
+              
+              <div className="relative flex items-center flex-grow max-w-xs">
+                <input
+                  type="text"
+                  value={newParticipantName}
+                  onChange={(e) => setNewParticipantName(e.target.value)}
+                  placeholder="Add participant..."
+                  className="w-full py-1 px-3 text-sm border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={addParticipant}
+                  disabled={!newParticipantName.trim()}
+                  className="px-2 py-1 bg-nsplit-500 text-white rounded-r-md hover:bg-nsplit-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
           </div>
           
           <div>
@@ -721,14 +751,6 @@ const AddPayment: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mr-2">
                   Split Between
                 </label>
-                <button
-                  type="button"
-                  onClick={generateQRCode}
-                  className="text-xs flex items-center text-nsplit-600 bg-nsplit-50 px-2 py-1 rounded border border-nsplit-100 hover:bg-nsplit-100"
-                >
-                  <QrCode size={12} className="mr-1" />
-                  Share QR
-                </button>
               </div>
               <button
                 type="button"
@@ -809,26 +831,6 @@ const AddPayment: React.FC = () => {
                   </div>
                 </div>
               ))}
-              
-              {/* Add new participant */}
-              <div className="flex items-center mt-4">
-                <div className="flex-grow">
-                  <input
-                    type="text"
-                    value={newParticipantName}
-                    onChange={(e) => setNewParticipantName(e.target.value)}
-                    placeholder="New participant name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={addParticipant}
-                  className="px-4 py-2 bg-nsplit-500 text-white rounded-r-md hover:bg-nsplit-600 flex items-center"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
             </div>
           </div>
           

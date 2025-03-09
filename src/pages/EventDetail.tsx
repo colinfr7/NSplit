@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, DollarSign, UserCircle, Users, BarChart, Download, Calendar, Globe, Lock, Info } from 'lucide-react';
@@ -6,8 +5,8 @@ import Button from '@/components/Button';
 import ExpenseCard from '@/components/ExpenseCard';
 import BalanceCard from '@/components/BalanceCard';
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
-// Mock data for the UI
 const mockExpenses = [
   {
     id: '1',
@@ -49,7 +48,6 @@ const EventDetail: React.FC = () => {
   const [isPublic, setIsPublic] = useState(true); // Default to public
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
   
-  // Mock event data
   const event = {
     id: eventId,
     title: 'Weekend Trip to Bali',
@@ -77,44 +75,38 @@ const EventDetail: React.FC = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">{event.title}</h1>
-            <div className="flex items-center mt-1">
-              <button
-                onClick={toggleVisibility}
-                className={`flex items-center text-sm px-2.5 py-1 rounded-full ${
-                  isPublic 
-                    ? 'bg-green-50 text-green-600 hover:bg-green-100' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
+            <div className="flex items-center mt-2">
+              <div className="flex items-center space-x-2">
                 {isPublic ? (
-                  <>
-                    <Globe size={14} className="mr-1.5" />
-                    Public
-                  </>
+                  <Globe size={16} className="text-green-600" />
                 ) : (
-                  <>
-                    <Lock size={14} className="mr-1.5" />
-                    Private
-                  </>
+                  <Lock size={16} className="text-gray-600" />
                 )}
-              </button>
-              
-              <div className="relative ml-1">
-                <button
-                  onMouseEnter={() => setShowVisibilityTooltip(true)}
-                  onMouseLeave={() => setShowVisibilityTooltip(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <Info size={14} />
-                </button>
-                
-                {showVisibilityTooltip && (
-                  <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
-                    <p><strong>Public:</strong> Anyone can find, view, and add expenses to this event.</p>
-                    <p className="mt-1"><strong>Private:</strong> Only invited members can view and add expenses.</p>
-                    <div className="absolute left-0 bottom-0 transform translate-y-1/2 translate-x-1 rotate-45 w-2 h-2 bg-gray-800"></div>
-                  </div>
-                )}
+                <span className="text-sm font-medium">
+                  {isPublic ? 'Public' : 'Private'}
+                </span>
+                <Switch 
+                  checked={isPublic} 
+                  onCheckedChange={toggleVisibility}
+                  className="ml-1"
+                />
+                <div className="relative ml-1">
+                  <button
+                    onMouseEnter={() => setShowVisibilityTooltip(true)}
+                    onMouseLeave={() => setShowVisibilityTooltip(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <Info size={14} />
+                  </button>
+                  
+                  {showVisibilityTooltip && (
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
+                      <p><strong>Public:</strong> Anyone can find, view, and add expenses to this event.</p>
+                      <p className="mt-1"><strong>Private:</strong> Only invited members can view and add expenses.</p>
+                      <div className="absolute left-0 bottom-0 transform translate-y-1/2 translate-x-1 rotate-45 w-2 h-2 bg-gray-800"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
