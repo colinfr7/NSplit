@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ interface CurrencyOption {
 interface Event {
   id: string;
   title: string;
+  isPublic?: boolean;
 }
 
 const currencies: CurrencyOption[] = [
@@ -34,22 +35,30 @@ const currencies: CurrencyOption[] = [
 
 // Mock events data - in a real app this would come from an API
 const mockEvents: Event[] = [
-  { id: '123', title: 'Weekend Trip' },
-  { id: '456', title: 'Dinner Party' },
-  { id: '789', title: 'Office Lunch' },
+  { id: '123', title: 'Weekend Trip', isPublic: true },
+  { id: '456', title: 'Dinner Party', isPublic: true },
+  { id: '789', title: 'Office Lunch', isPublic: false },
+  { id: '101', title: 'Birthday Celebration', isPublic: true },
+  { id: '102', title: 'Game Night', isPublic: true },
+  { id: '103', title: 'Movie Night', isPublic: false },
+  { id: '104', title: 'Beach Day', isPublic: true },
 ];
 
 const AddPayment: React.FC = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
   const [paymentTitle, setPaymentTitle] = useState('');
-  const [totalAmount, setTotalAmount] = useState<string>(''); // Changed to string for input control
+  const [totalAmount, setTotalAmount] = useState<string>(''); 
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
   const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<string>(eventId || '');
-  const [newEventName, setNewEventName] = useState<string>('');
-  const [showNewEventInput, setShowNewEventInput] = useState<boolean>(false);
+  
+  // Event search and filtering
+  const [eventSearchTerm, setEventSearchTerm] = useState<string>('');
+  const [showEventDropdown, setShowEventDropdown] = useState<boolean>(false);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const eventSearchRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
   
@@ -74,8 +83,40 @@ const AddPayment: React.FC = () => {
     // If eventId is passed, set the selected event
     if (eventId) {
       setSelectedEvent(eventId);
+      // Find the event title for the ID
+      const event = events.find(e => e.id === eventId);
+      if (event) {
+        setEventSearchTerm(event.title);
+      }
     }
-  }, [loggedInUser.name, eventId]);
+  }, [loggedInUser.name, eventId, events]);
+  
+  // Filter events based on search term
+  useEffect(() => {
+    if (eventSearchTerm) {
+      const filtered = events.filter(event => 
+        event.title.toLowerCase().includes(eventSearchTerm.toLowerCase())
+      );
+      setFilteredEvents(filtered);
+    } else {
+      // When empty, show only public events as suggestions
+      setFilteredEvents(events.filter(event => event.isPublic));
+    }
+  }, [eventSearchTerm, events]);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (eventSearchRef.current && !eventSearchRef.current.contains(event.target as Node)) {
+        setShowEventDropdown(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   
   // Handle total amount input as string but convert to number for calculations
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,8 +204,7 @@ const AddPayment: React.FC = () => {
     const numericTotalAmount = parseFloat(totalAmount);
     const totalUsdcAmount = numericTotalAmount * selectedCurrency.rate;
     const sumUsdcAmounts = participants.reduce((sum, p) => {
-      const participantUsdcAmount = p.amount === null ? 0 : p.amount * selectedCurrency.rate;
-      return sum + participantUsdcAmount;
+      return sum + (p.amount === null ? 0 : p.amount * selectedCurrency.rate);
     }, 0);
     
     const difference = Math.abs(totalUsdcAmount - sumUsdcAmounts);
@@ -175,13 +215,12 @@ const AddPayment: React.FC = () => {
   // Calculate total USDC sum of participants for unequal splits
   const getTotalParticipantsAmount = (): number => {
     return participants.reduce((sum, p) => {
-      const participantUsdcAmount = p.amount === null ? 0 : p.amount * selectedCurrency.rate;
-      return sum + participantUsdcAmount;
+      return sum + (p.amount === null ? 0 : p.amount * selectedCurrency.rate);
     }, 0);
   };
   
-  const handleCreateNewEvent = () => {
-    if (!newEventName.trim()) {
+  const handleCreateNewEvent = (title: string) => {
+    if (!title.trim()) {
       toast.error("Please enter an event name");
       return;
     }
@@ -189,7 +228,8 @@ const AddPayment: React.FC = () => {
     // Create a new event
     const newEvent: Event = {
       id: `new-${Date.now()}`,
-      title: newEventName.trim()
+      title: title.trim(),
+      isPublic: true // Default to public
     };
     
     // Add the new event to the list
@@ -197,12 +237,30 @@ const AddPayment: React.FC = () => {
     
     // Select the new event
     setSelectedEvent(newEvent.id);
-    
-    // Reset the new event input
-    setNewEventName('');
-    setShowNewEventInput(false);
+    setEventSearchTerm(newEvent.title);
+    setShowEventDropdown(false);
     
     toast.success(`New event "${newEvent.title}" created`);
+  };
+  
+  const handleSelectEvent = (event: Event) => {
+    setSelectedEvent(event.id);
+    setEventSearchTerm(event.title);
+    setShowEventDropdown(false);
+  };
+  
+  const handleEventSearchFocus = () => {
+    setShowEventDropdown(true);
+  };
+  
+  const handleEventSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEventSearchTerm(e.target.value);
+    setShowEventDropdown(true);
+    
+    // Clear selected event if search field is emptied
+    if (e.target.value === '') {
+      setSelectedEvent('');
+    }
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -251,6 +309,17 @@ const AddPayment: React.FC = () => {
     return participant.amount * selectedCurrency.rate;
   };
   
+  // Get an event by ID
+  const getEventById = (id: string): Event | undefined => {
+    return events.find(event => event.id === id);
+  };
+  
+  // Get currently selected event
+  const currentEvent = selectedEvent ? getEventById(selectedEvent) : undefined;
+  
+  // Get public events for quick selection
+  const publicEvents = events.filter(event => event.isPublic);
+  
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
       <div className="max-w-lg mx-auto">
@@ -279,63 +348,155 @@ const AddPayment: React.FC = () => {
             />
           </div>
           
-          {/* Event Selection field */}
-          <div>
-            <label htmlFor="event-select" className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Enhanced Event Selection field */}
+          <div ref={eventSearchRef}>
+            <label htmlFor="event-search" className="block text-sm font-medium text-gray-700 mb-1">
               Event
             </label>
             
-            {!showNewEventInput ? (
-              <div className="flex gap-2">
-                <select
-                  id="event-select"
-                  value={selectedEvent}
-                  onChange={(e) => setSelectedEvent(e.target.value)}
-                  className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-                >
-                  <option value="">Select an event</option>
-                  {events.map(event => (
-                    <option key={event.id} value={event.id}>
-                      {event.title}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => setShowNewEventInput(true)}
-                >
-                  <Plus size={16} />
-                  New
-                </Button>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-gray-400" />
               </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newEventName}
-                  onChange={(e) => setNewEventName(e.target.value)}
-                  placeholder="Enter new event name"
-                  className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-                  autoFocus
-                />
-                <Button
+              
+              <input
+                id="event-search"
+                type="text"
+                value={eventSearchTerm}
+                onChange={handleEventSearchChange}
+                onFocus={handleEventSearchFocus}
+                placeholder="Search or create an event..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+              />
+              
+              {eventSearchTerm && (
+                <button 
                   type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={handleCreateNewEvent}
+                  onClick={() => {
+                    setEventSearchTerm('');
+                    setSelectedEvent('');
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                 >
-                  Create
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="md"
-                  onClick={() => setShowNewEventInput(false)}
-                >
-                  Cancel
-                </Button>
+                  <X size={16} />
+                </button>
+              )}
+              
+              {/* Dropdown for event search results */}
+              {showEventDropdown && (
+                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
+                  {filteredEvents.length > 0 ? (
+                    <ul className="py-1">
+                      {filteredEvents.map(event => (
+                        <li key={event.id} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleSelectEvent(event)}>
+                          <div className="flex items-center justify-between">
+                            <span className={`${selectedEvent === event.id ? 'font-medium text-nsplit-600' : ''}`}>
+                              {event.title}
+                            </span>
+                            <span className="flex items-center text-xs text-gray-500">
+                              {event.isPublic ? (
+                                <Globe size={14} className="ml-2 text-green-500" />
+                              ) : (
+                                <Lock size={14} className="ml-2 text-gray-400" />
+                              )}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="p-3">
+                      <p className="text-sm text-gray-500 mb-2">No events found with "{eventSearchTerm}"</p>
+                      <button
+                        type="button"
+                        onClick={() => handleCreateNewEvent(eventSearchTerm)}
+                        className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
+                      >
+                        <Plus size={16} className="mr-2" />
+                        Create "{eventSearchTerm}"
+                      </button>
+                    </div>
+                  )}
+                  
+                  {filteredEvents.length > 0 && !filteredEvents.some(e => e.title.toLowerCase() === eventSearchTerm.toLowerCase()) && eventSearchTerm && (
+                    <div className="p-3 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => handleCreateNewEvent(eventSearchTerm)}
+                        className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
+                      >
+                        <Plus size={16} className="mr-2" />
+                        Create "{eventSearchTerm}"
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Public events quick selection */}
+            {publicEvents.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 mb-2">Public Events</p>
+                <div className="flex flex-wrap gap-2">
+                  {publicEvents.slice(0, 5).map(event => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => handleSelectEvent(event)}
+                      className={`px-3 py-1.5 text-sm rounded-full flex items-center ${
+                        selectedEvent === event.id 
+                          ? 'bg-nsplit-100 text-nsplit-700 font-medium' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {event.title}
+                      <Globe size={12} className="ml-1.5 text-green-500" />
+                    </button>
+                  ))}
+                  
+                  {publicEvents.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEventDropdown(true)}
+                      className="px-3 py-1.5 text-sm rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
+                    >
+                      +{publicEvents.length - 5} more
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Show selected event with visibility indicator */}
+            {currentEvent && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <span className="font-medium">{currentEvent.title}</span>
+                    {currentEvent.isPublic ? (
+                      <span className="ml-2 flex items-center text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                        <Globe size={12} className="mr-1" />
+                        Public
+                      </span>
+                    ) : (
+                      <span className="ml-2 flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                        <Lock size={12} className="mr-1" />
+                        Private
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEvent('');
+                      setEventSearchTerm('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -359,12 +520,12 @@ const AddPayment: React.FC = () => {
                 />
               </div>
               
-              {/* Always show conversion box with improved styling */}
+              {/* Improved conversion box with prominent USDC amount */}
               <div className="mt-2 p-3 rounded-md bg-gradient-to-r from-nsplit-50 to-blue-50 border border-nsplit-100 shadow-sm">
                 <div className="flex flex-col">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-1">
                     <span className="text-sm text-gray-500">USDC Equivalent:</span>
-                    <span className="text-lg font-semibold text-nsplit-800">
+                    <span className="text-xl font-semibold text-nsplit-800">
                       ${numericTotalAmount > 0 
                         ? (numericTotalAmount * selectedCurrency.rate).toFixed(2) 
                         : '0.00'}
@@ -372,7 +533,6 @@ const AddPayment: React.FC = () => {
                   </div>
                   <div className="text-xs text-nsplit-600 mt-1 flex justify-end items-center">
                     <span>Rate: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC</span>
-                    <span className="ml-1 text-nsplit-400">(via Google Finance)</span>
                   </div>
                 </div>
               </div>
@@ -489,7 +649,7 @@ const AddPayment: React.FC = () => {
                       className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     
-                    {/* Display USDC label since we're already showing USDC values */}
+                    {/* Display USDC label */}
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-nsplit-50 px-2 py-0.5 rounded text-xs font-medium text-nsplit-700 border border-nsplit-100">
                       USDC
                     </div>
