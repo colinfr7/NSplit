@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X } from 'lucide-react';
+import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X, QrCode, Edit } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { useAuth } from '@/context/AuthContext';
@@ -60,6 +59,13 @@ const AddPayment: React.FC = () => {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const eventSearchRef = useRef<HTMLDivElement>(null);
   
+  // Event editing
+  const [isEditingEvent, setIsEditingEvent] = useState<boolean>(false);
+  const [editedEventTitle, setEditedEventTitle] = useState<string>('');
+  
+  // QR code modal
+  const [showQRModal, setShowQRModal] = useState<boolean>(false);
+  
   const { user } = useAuth();
   
   const loggedInUser = { id: '1', name: user?.displayName || 'Alex' };
@@ -70,6 +76,7 @@ const AddPayment: React.FC = () => {
     { id: '2', name: 'Jamie', amount: null },
     { id: '3', name: 'Taylor', amount: null },
   ]);
+  const [newParticipantName, setNewParticipantName] = useState<string>('');
   const [splitEqually, setSplitEqually] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -117,7 +124,7 @@ const AddPayment: React.FC = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  
+
   // Handle total amount input as string but convert to number for calculations
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -146,7 +153,7 @@ const AddPayment: React.FC = () => {
   };
   
   const updateEqualSplits = (total: number) => {
-    if (total > 0) {
+    if (total > 0 && participants.length > 0) {
       const equalAmount = total / participants.length;
       setParticipants(prevParticipants =>
         prevParticipants.map(p => ({ ...p, amount: equalAmount }))
@@ -263,6 +270,96 @@ const AddPayment: React.FC = () => {
     }
   };
   
+  const startEditingEvent = () => {
+    if (!selectedEvent) return;
+    
+    const event = events.find(e => e.id === selectedEvent);
+    if (event) {
+      setEditedEventTitle(event.title);
+      setIsEditingEvent(true);
+    }
+  };
+  
+  const saveEditedEvent = () => {
+    if (!editedEventTitle.trim()) {
+      toast.error("Event name cannot be empty");
+      return;
+    }
+    
+    setEvents(prevEvents => 
+      prevEvents.map(event => 
+        event.id === selectedEvent 
+          ? { ...event, title: editedEventTitle.trim() } 
+          : event
+      )
+    );
+    
+    setEventSearchTerm(editedEventTitle.trim());
+    setIsEditingEvent(false);
+    toast.success("Event name updated");
+  };
+  
+  const cancelEditingEvent = () => {
+    setIsEditingEvent(false);
+  };
+  
+  const addParticipant = () => {
+    if (!newParticipantName.trim()) {
+      toast.error("Please enter a name");
+      return;
+    }
+    
+    const newId = `p-${Date.now()}`;
+    const newParticipant: Participant = {
+      id: newId,
+      name: newParticipantName.trim(),
+      amount: null
+    };
+    
+    setParticipants([...participants, newParticipant]);
+    setNewParticipantName('');
+    
+    // Update split amounts if equal splitting is enabled
+    if (splitEqually && totalAmount) {
+      const numericValue = parseFloat(totalAmount);
+      if (numericValue > 0) {
+        setTimeout(() => updateEqualSplits(numericValue), 0);
+      }
+    }
+    
+    toast.success(`${newParticipantName.trim()} added to payment`);
+  };
+  
+  const removeParticipant = (id: string) => {
+    if (participants.length <= 2) {
+      toast.error("At least 2 participants are required");
+      return;
+    }
+    
+    const participant = participants.find(p => p.id === id);
+    setParticipants(participants.filter(p => p.id !== id));
+    
+    // Update split amounts if equal splitting is enabled
+    if (splitEqually && totalAmount) {
+      const numericValue = parseFloat(totalAmount);
+      if (numericValue > 0) {
+        setTimeout(() => updateEqualSplits(numericValue), 0);
+      }
+    }
+    
+    if (participant) {
+      toast.success(`${participant.name} removed from payment`);
+    }
+  };
+  
+  const generateQRCode = () => {
+    setShowQRModal(true);
+  };
+  
+  const closeQRModal = () => {
+    setShowQRModal(false);
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -354,88 +451,115 @@ const AddPayment: React.FC = () => {
               Event
             </label>
             
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={16} className="text-gray-400" />
-              </div>
-              
-              <input
-                id="event-search"
-                type="text"
-                value={eventSearchTerm}
-                onChange={handleEventSearchChange}
-                onFocus={handleEventSearchFocus}
-                placeholder="Search or create an event..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-              />
-              
-              {eventSearchTerm && (
-                <button 
+            {isEditingEvent ? (
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  value={editedEventTitle}
+                  onChange={(e) => setEditedEventTitle(e.target.value)}
+                  className="flex-grow px-4 py-2 border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                  placeholder="Enter event name"
+                  autoFocus
+                />
+                <button
                   type="button"
-                  onClick={() => {
-                    setEventSearchTerm('');
-                    setSelectedEvent('');
-                  }}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  onClick={saveEditedEvent}
+                  className="px-3 py-2 bg-nsplit-500 text-white rounded-none hover:bg-nsplit-600"
                 >
-                  <X size={16} />
+                  Save
                 </button>
-              )}
-              
-              {/* Dropdown for event search results */}
-              {showEventDropdown && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
-                  {filteredEvents.length > 0 ? (
-                    <ul className="py-1">
-                      {filteredEvents.map(event => (
-                        <li key={event.id} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleSelectEvent(event)}>
-                          <div className="flex items-center justify-between">
-                            <span className={`${selectedEvent === event.id ? 'font-medium text-nsplit-600' : ''}`}>
-                              {event.title}
-                            </span>
-                            <span className="flex items-center text-xs text-gray-500">
-                              {event.isPublic ? (
-                                <Globe size={14} className="ml-2 text-green-500" />
-                              ) : (
-                                <Lock size={14} className="ml-2 text-gray-400" />
-                              )}
-                            </span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="p-3">
-                      <p className="text-sm text-gray-500 mb-2">No events found with "{eventSearchTerm}"</p>
-                      <button
-                        type="button"
-                        onClick={() => handleCreateNewEvent(eventSearchTerm)}
-                        className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
-                      >
-                        <Plus size={16} className="mr-2" />
-                        Create "{eventSearchTerm}"
-                      </button>
-                    </div>
-                  )}
-                  
-                  {filteredEvents.length > 0 && !filteredEvents.some(e => e.title.toLowerCase() === eventSearchTerm.toLowerCase()) && eventSearchTerm && (
-                    <div className="p-3 border-t border-gray-100">
-                      <button
-                        type="button"
-                        onClick={() => handleCreateNewEvent(eventSearchTerm)}
-                        className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
-                      >
-                        <Plus size={16} className="mr-2" />
-                        Create "{eventSearchTerm}"
-                      </button>
-                    </div>
-                  )}
+                <button
+                  type="button"
+                  onClick={cancelEditingEvent}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-r-md hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search size={16} className="text-gray-400" />
                 </div>
-              )}
-            </div>
+                
+                <input
+                  id="event-search"
+                  type="text"
+                  value={eventSearchTerm}
+                  onChange={handleEventSearchChange}
+                  onFocus={handleEventSearchFocus}
+                  placeholder="Search or create an event..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                />
+                
+                {eventSearchTerm && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setEventSearchTerm('');
+                      setSelectedEvent('');
+                    }}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+                
+                {/* Dropdown for event search results */}
+                {showEventDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
+                    {filteredEvents.length > 0 ? (
+                      <ul className="py-1">
+                        {filteredEvents.map(event => (
+                          <li key={event.id} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleSelectEvent(event)}>
+                            <div className="flex items-center justify-between">
+                              <span className={`${selectedEvent === event.id ? 'font-medium text-nsplit-600' : ''}`}>
+                                {event.title}
+                              </span>
+                              <span className="flex items-center text-xs text-gray-500">
+                                {event.isPublic ? (
+                                  <Globe size={14} className="ml-2 text-green-500" />
+                                ) : (
+                                  <Lock size={14} className="ml-2 text-gray-400" />
+                                )}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="p-3">
+                        <p className="text-sm text-gray-500 mb-2">No events found with "{eventSearchTerm}"</p>
+                        <button
+                          type="button"
+                          onClick={() => handleCreateNewEvent(eventSearchTerm)}
+                          className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Create "{eventSearchTerm}"
+                        </button>
+                      </div>
+                    )}
+                    
+                    {filteredEvents.length > 0 && !filteredEvents.some(e => e.title.toLowerCase() === eventSearchTerm.toLowerCase()) && eventSearchTerm && (
+                      <div className="p-3 border-t border-gray-100">
+                        <button
+                          type="button"
+                          onClick={() => handleCreateNewEvent(eventSearchTerm)}
+                          className="w-full flex items-center justify-center text-sm font-medium text-nsplit-600 bg-nsplit-50 hover:bg-nsplit-100 p-2 rounded-md transition-colors"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Create "{eventSearchTerm}"
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             
-            {/* Public events quick selection */}
-            {publicEvents.length > 0 && (
+            {/* Public events quick selection (show only if not editing and no event selected) */}
+            {!isEditingEvent && !currentEvent && publicEvents.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-gray-500 mb-2">Public Events</p>
                 <div className="flex flex-wrap gap-2">
@@ -468,8 +592,8 @@ const AddPayment: React.FC = () => {
               </div>
             )}
             
-            {/* Show selected event with visibility indicator */}
-            {currentEvent && (
+            {/* Show selected event with edit button */}
+            {!isEditingEvent && currentEvent && (
               <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
@@ -486,16 +610,26 @@ const AddPayment: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedEvent('');
-                      setEventSearchTerm('');
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X size={16} />
-                  </button>
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={startEditingEvent}
+                      className="mr-2 flex items-center text-nsplit-600 hover:text-nsplit-700 text-sm"
+                    >
+                      <Edit size={14} className="mr-1" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedEvent('');
+                        setEventSearchTerm('');
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -574,7 +708,7 @@ const AddPayment: React.FC = () => {
                   />
                   {participant.name}
                   {participant.id === loggedInUser.id && (
-                    <span className="ml-2 text-xs font-medium text-nsplit-600">(You)</span>
+                    <span className="ml-1 text-xs font-medium text-nsplit-600">(You)</span>
                   )}
                 </label>
               ))}
@@ -583,9 +717,19 @@ const AddPayment: React.FC = () => {
           
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Split Between
-              </label>
+              <div className="flex items-center">
+                <label className="block text-sm font-medium text-gray-700 mr-2">
+                  Split Between
+                </label>
+                <button
+                  type="button"
+                  onClick={generateQRCode}
+                  className="text-xs flex items-center text-nsplit-600 bg-nsplit-50 px-2 py-1 rounded border border-nsplit-100 hover:bg-nsplit-100"
+                >
+                  <QrCode size={12} className="mr-1" />
+                  Share QR
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={toggleSplitEqually}
@@ -622,12 +766,21 @@ const AddPayment: React.FC = () => {
             <div className="space-y-3">
               {participants.map(participant => (
                 <div key={participant.id} className="flex items-center">
-                  <label className="w-24 text-sm font-medium text-gray-700">
-                    {participant.name}
-                    {participant.id === loggedInUser.id && (
-                      <span className="ml-1 text-xs text-nsplit-600">(You)</span>
-                    )}
-                  </label>
+                  <div className="w-24 flex items-center text-sm font-medium text-gray-700">
+                    <span className="truncate">
+                      {participant.name}
+                      {participant.id === loggedInUser.id && (
+                        <span className="ml-1 text-xs text-nsplit-600">(You)</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeParticipant(participant.id)}
+                      className="ml-1 text-gray-400 hover:text-red-500"
+                    >
+                      <Minus size={14} />
+                    </button>
+                  </div>
                   <div className="relative flex-grow">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <DollarSign size={14} className="text-nsplit-600" />
@@ -656,6 +809,26 @@ const AddPayment: React.FC = () => {
                   </div>
                 </div>
               ))}
+              
+              {/* Add new participant */}
+              <div className="flex items-center mt-4">
+                <div className="flex-grow">
+                  <input
+                    type="text"
+                    value={newParticipantName}
+                    onChange={(e) => setNewParticipantName(e.target.value)}
+                    placeholder="New participant name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addParticipant}
+                  className="px-4 py-2 bg-nsplit-500 text-white rounded-r-md hover:bg-nsplit-600 flex items-center"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             </div>
           </div>
           
@@ -666,6 +839,42 @@ const AddPayment: React.FC = () => {
           </div>
         </form>
       </div>
+      
+      {/* QR Code Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Share Payment</h3>
+              <button
+                onClick={closeQRModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="border-4 border-white p-2 shadow-md rounded">
+                <div className="bg-gray-200 h-48 w-48 flex items-center justify-center">
+                  <QrCode size={100} className="text-gray-700" />
+                </div>
+              </div>
+              
+              <p className="mt-4 text-sm text-gray-600 text-center">
+                Scan this QR code to join this payment.
+                They'll be able to add their name and participate in the split.
+              </p>
+              
+              <div className="mt-4 w-full">
+                <Button onClick={closeQRModal} fullWidth>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
