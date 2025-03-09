@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { useAuth } from '@/context/AuthContext';
@@ -18,12 +19,24 @@ interface CurrencyOption {
   rate: number; // Exchange rate to USDC
 }
 
+interface Event {
+  id: string;
+  title: string;
+}
+
 const currencies: CurrencyOption[] = [
   { code: 'USDC', symbol: '$', name: 'USDC', rate: 1 },
   { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', rate: 0.23 }, // Example rate: 1 MYR = 0.23 USDC
   { code: 'USD', symbol: '$', name: 'US Dollar', rate: 1 },
   { code: 'EUR', symbol: '€', name: 'Euro', rate: 1.08 },
   { code: 'GBP', symbol: '£', name: 'British Pound', rate: 1.27 },
+];
+
+// Mock events data - in a real app this would come from an API
+const mockEvents: Event[] = [
+  { id: '123', title: 'Weekend Trip' },
+  { id: '456', title: 'Dinner Party' },
+  { id: '789', title: 'Office Lunch' },
 ];
 
 const AddPayment: React.FC = () => {
@@ -33,6 +46,10 @@ const AddPayment: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState<string>(''); // Changed to string for input control
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
   const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
+  const [events, setEvents] = useState<Event[]>(mockEvents);
+  const [selectedEvent, setSelectedEvent] = useState<string>(eventId || '');
+  const [newEventName, setNewEventName] = useState<string>('');
+  const [showNewEventInput, setShowNewEventInput] = useState<boolean>(false);
   
   const { user } = useAuth();
   
@@ -46,10 +63,19 @@ const AddPayment: React.FC = () => {
   ]);
   const [splitEqually, setSplitEqually] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // Check if total equals sum of individual amounts for unequal splits
+  const [splitAmountError, setSplitAmountError] = useState<boolean>(false);
+  const [splitAmountDifference, setSplitAmountDifference] = useState<number>(0);
   
   useEffect(() => {
     setPayer(loggedInUser.name);
-  }, [loggedInUser.name]);
+    
+    // If eventId is passed, set the selected event
+    if (eventId) {
+      setSelectedEvent(eventId);
+    }
+  }, [loggedInUser.name, eventId]);
   
   // Handle total amount input as string but convert to number for calculations
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,17 +136,73 @@ const AddPayment: React.FC = () => {
         p.id === id ? { ...p, amount: amount } : p
       )
     );
+    
+    // Check total after a short delay to allow for user typing
+    setTimeout(validateSplitAmounts, 100);
   };
   
   const toggleSplitEqually = () => {
     setSplitEqually(!splitEqually);
     
-    if (!splitEqually && totalAmount !== '') {
-      const numericValue = parseFloat(totalAmount);
+    if (!splitEqually) { // Going from unequal to equal
+      const numericValue = totalAmount === '' ? 0 : parseFloat(totalAmount);
       if (numericValue > 0) {
         updateEqualSplits(numericValue);
       }
+      // Reset error state
+      setSplitAmountError(false);
+      setSplitAmountDifference(0);
+    } else { // Going from equal to unequal
+      validateSplitAmounts();
     }
+  };
+  
+  const validateSplitAmounts = () => {
+    if (splitEqually || totalAmount === '') return;
+    
+    const numericTotalAmount = parseFloat(totalAmount);
+    const totalUsdcAmount = numericTotalAmount * selectedCurrency.rate;
+    const sumUsdcAmounts = participants.reduce((sum, p) => {
+      const participantUsdcAmount = p.amount === null ? 0 : p.amount * selectedCurrency.rate;
+      return sum + participantUsdcAmount;
+    }, 0);
+    
+    const difference = Math.abs(totalUsdcAmount - sumUsdcAmounts);
+    setSplitAmountDifference(difference);
+    setSplitAmountError(difference > 0.01); // Allow a small rounding error
+  };
+  
+  // Calculate total USDC sum of participants for unequal splits
+  const getTotalParticipantsAmount = (): number => {
+    return participants.reduce((sum, p) => {
+      const participantUsdcAmount = p.amount === null ? 0 : p.amount * selectedCurrency.rate;
+      return sum + participantUsdcAmount;
+    }, 0);
+  };
+  
+  const handleCreateNewEvent = () => {
+    if (!newEventName.trim()) {
+      toast.error("Please enter an event name");
+      return;
+    }
+    
+    // Create a new event
+    const newEvent: Event = {
+      id: `new-${Date.now()}`,
+      title: newEventName.trim()
+    };
+    
+    // Add the new event to the list
+    setEvents([...events, newEvent]);
+    
+    // Select the new event
+    setSelectedEvent(newEvent.id);
+    
+    // Reset the new event input
+    setNewEventName('');
+    setShowNewEventInput(false);
+    
+    toast.success(`New event "${newEvent.title}" created`);
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,11 +220,14 @@ const AddPayment: React.FC = () => {
       toast.error("Please select who paid");
       return;
     }
+    if (!selectedEvent) {
+      toast.error("Please select or create an event");
+      return;
+    }
     
     if (!splitEqually) {
-      const totalIndividualAmount = participants.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const enteredTotal = parseFloat(totalAmount);
-      if (Math.abs(totalIndividualAmount - enteredTotal) > 0.01) {
+      validateSplitAmounts();
+      if (splitAmountError) {
         toast.error("The sum of individual amounts must equal the total amount");
         return;
       }
@@ -152,7 +237,7 @@ const AddPayment: React.FC = () => {
     
     setTimeout(() => {
       toast.success("Payment added successfully!");
-      navigate(`/event/${eventId}`);
+      navigate(`/event/${selectedEvent}`);
       setLoading(false);
     }, 1000);
   };
@@ -194,6 +279,67 @@ const AddPayment: React.FC = () => {
             />
           </div>
           
+          {/* Event Selection field */}
+          <div>
+            <label htmlFor="event-select" className="block text-sm font-medium text-gray-700 mb-1">
+              Event
+            </label>
+            
+            {!showNewEventInput ? (
+              <div className="flex gap-2">
+                <select
+                  id="event-select"
+                  value={selectedEvent}
+                  onChange={(e) => setSelectedEvent(e.target.value)}
+                  className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                >
+                  <option value="">Select an event</option>
+                  {events.map(event => (
+                    <option key={event.id} value={event.id}>
+                      {event.title}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={() => setShowNewEventInput(true)}
+                >
+                  <Plus size={16} />
+                  New
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  placeholder="Enter new event name"
+                  className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={handleCreateNewEvent}
+                >
+                  Create
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setShowNewEventInput(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+          
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-grow">
               <label htmlFor="total-amount" className="block text-sm font-medium text-gray-700 mb-1">
@@ -201,7 +347,7 @@ const AddPayment: React.FC = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm mr-1">{selectedCurrency.symbol}</span>
+                  <span className="text-gray-500 sm:text-sm mr-2">{selectedCurrency.symbol}</span>
                 </div>
                 <input
                   id="total-amount"
@@ -288,6 +434,30 @@ const AddPayment: React.FC = () => {
                 {splitEqually ? 'Split unequally' : 'Split equally'}
               </button>
             </div>
+            
+            {/* Split amount summary feedback */}
+            {!splitEqually && totalAmount !== '' && (
+              <div className={`mb-3 p-2 rounded-md flex items-center ${
+                splitAmountError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+              }`}>
+                {splitAmountError ? (
+                  <>
+                    <AlertCircle size={16} className="mr-1" />
+                    <div className="text-sm">
+                      <span className="font-medium">Amounts don't match: </span>
+                      <span>Total: ${(numericTotalAmount * selectedCurrency.rate).toFixed(2)}, </span>
+                      <span>Split sum: ${getTotalParticipantsAmount().toFixed(2)}, </span>
+                      <span>Difference: ${splitAmountDifference.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} className="mr-1" />
+                    <span className="text-sm font-medium">Amounts match</span>
+                  </>
+                )}
+              </div>
+            )}
             
             <div className="space-y-3">
               {participants.map(participant => (
