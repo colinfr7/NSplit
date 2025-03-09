@@ -1,4 +1,4 @@
-<lov-codelov-code>
+
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
@@ -212,4 +212,3 @@ const AddPayment: React.FC = () => {
 };
 
 export default AddPayment;
-</lov-code>
