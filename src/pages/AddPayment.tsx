@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
+import { useAuth } from '@/context/AuthContext';
 
 interface Participant {
   id: string;
@@ -34,8 +35,11 @@ const AddPayment: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(currencies[1]); // Default to MYR
   const [usdcEquivalent, setUsdcEquivalent] = useState<number | null>(null);
   
+  // Get the logged-in user from auth context
+  const { user } = useAuth();
+  
   // Mock logged-in user (in real app, this would come from auth context)
-  const loggedInUser = { id: '1', name: 'Alex' };
+  const loggedInUser = { id: '1', name: user?.displayName || 'Alex' };
   
   const [payer, setPayer] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([
@@ -276,6 +280,11 @@ const AddPayment: React.FC = () => {
                       disabled={splitEqually}
                       className="w-full px-4 py-2 pl-8 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
+                    {participant.amount !== null && selectedCurrency.code !== 'USDC' && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        ${(participant.amount * selectedCurrency.rate).toFixed(2)} USDC
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
