@@ -46,14 +46,12 @@ const Dashboard: React.FC = () => {
     }
   ]);
   
-  // Redirect if not authenticated
   React.useEffect(() => {
     if (!isAuthenticated) {
       navigate('/sign-in?redirect=/dashboard');
     }
   }, [isAuthenticated, navigate]);
   
-  // Mock events data with user balance information
   const events = [
     {
       id: '123',
@@ -61,7 +59,7 @@ const Dashboard: React.FC = () => {
       date: 'June 15-18, 2023',
       participants: 4,
       totalExpenses: 750.25,
-      userBalance: 85.50, // Positive: user gets money back
+      userBalance: 85.50,
       expenses: [
         { id: 'exp1', title: 'Hotel', amount: 450, date: '2023-06-15', paidBy: 'Alex', splitBetween: ['Alex', 'Jamie', 'Taylor', 'Morgan'] },
         { id: 'exp2', title: 'Dinner', amount: 120, date: '2023-06-16', paidBy: 'Jamie', splitBetween: ['Alex', 'Jamie', 'Taylor', 'Morgan'] },
@@ -75,7 +73,7 @@ const Dashboard: React.FC = () => {
       date: 'July 3, 2023',
       participants: 3,
       totalExpenses: 120.75,
-      userBalance: -45.25, // Negative: user owes money
+      userBalance: -45.25,
       expenses: [
         { id: 'exp5', title: 'Dinner Bill', amount: 120.75, date: '2023-07-03', paidBy: 'Jamie', splitBetween: ['Alex', 'Jamie', 'Taylor'] }
       ]
@@ -86,7 +84,7 @@ const Dashboard: React.FC = () => {
       date: 'August 20-22, 2023',
       participants: 5,
       totalExpenses: 1250.00,
-      userBalance: 0, // Neutral: user is settled up
+      userBalance: 0,
       expenses: [
         { id: 'exp6', title: 'Gas', amount: 80, date: '2023-08-20', paidBy: 'Alex', splitBetween: ['Alex', 'Jamie', 'Taylor', 'Morgan', 'Riley'] },
         { id: 'exp7', title: 'Camping', amount: 200, date: '2023-08-20', paidBy: 'Riley', splitBetween: ['Alex', 'Jamie', 'Taylor', 'Morgan', 'Riley'] },
@@ -96,7 +94,6 @@ const Dashboard: React.FC = () => {
     }
   ];
   
-  // Mock payment actions based on algorithm
   const paymentActions = [
     {
       id: 'pay1',
@@ -149,18 +146,15 @@ const Dashboard: React.FC = () => {
     }
   ];
   
-  // Calculate total events and transactions statistics
   const totalEvents = events.length;
   const totalTransactions = events.reduce((sum, event) => sum + event.expenses.length, 0);
   const totalSplitTransactions = events.reduce((sum, event) => {
     return sum + event.expenses.filter(exp => exp.splitBetween.length > 1).length;
   }, 0);
   
-  // Calculate total balance
   const totalBalance = events.reduce((sum, event) => sum + (event.userBalance || 0), 0);
   const isPositiveTotalBalance = totalBalance >= 0;
   
-  // Calculate how much user is owed and owes
   const totalOwed = events.reduce((sum, event) => {
     const balance = event.userBalance || 0;
     return sum + (balance > 0 ? balance : 0);
@@ -171,7 +165,6 @@ const Dashboard: React.FC = () => {
     return sum + (balance < 0 ? Math.abs(balance) : 0);
   }, 0);
   
-  // Count open transactions
   const openOwedTransactions = paymentActions.filter(action => action.type === 'receive' && action.status === 'pending').length;
   const openOwingTransactions = paymentActions.filter(action => action.type === 'owe' && action.status === 'pending').length;
   
@@ -201,7 +194,6 @@ const Dashboard: React.FC = () => {
       title: "Reminder Sent",
       description: `Reminder sent to collect $${amount.toFixed(2)}`,
     });
-    // In a real app, this would send a notification/email
   };
 
   const handleMarkAsCompleted = (actionId: string) => {
@@ -209,7 +201,6 @@ const Dashboard: React.FC = () => {
       title: "Payment Completed",
       description: "The payment has been marked as completed",
     });
-    // In a real app, this would update the payment status
   };
 
   const handleConfirmCashPayment = (notificationId: string) => {
@@ -218,7 +209,6 @@ const Dashboard: React.FC = () => {
       title: "Payment Confirmed",
       description: "You have confirmed receiving this cash payment",
     });
-    // In a real app, this would update the payment status
   };
 
   const handleDismissNotification = (notificationId: string) => {
@@ -226,7 +216,7 @@ const Dashboard: React.FC = () => {
   };
   
   if (!isAuthenticated) {
-    return null; // Don't render anything while redirecting
+    return null;
   }
   
   return (
@@ -234,9 +224,7 @@ const Dashboard: React.FC = () => {
       <div className="max-w-lg mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-8">Dashboard</h1>
         
-        {/* Stats Cards - Make Balance more prominent */}
         <div className="grid grid-cols-1 gap-4 mb-8">
-          {/* Total Balance - Made larger */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-sm font-medium text-gray-500 mb-1">Total Balance</h2>
             <div className="flex items-center">
@@ -258,9 +246,7 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
           
-          {/* Secondary cards in a single row */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Money Owed to You */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h2 className="text-sm font-medium text-gray-500 mb-1">You are owed</h2>
               <div className="flex items-center">
@@ -274,7 +260,6 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             
-            {/* Money You Owe */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <h2 className="text-sm font-medium text-gray-500 mb-1">You owe</h2>
               <div className="flex items-center">
@@ -290,58 +275,54 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Notifications Section - Improved styling */}
-        {notifications.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <Bell size={18} className="mr-2 text-nsplit-600" />
-              <h2 className="text-lg font-semibold">Notifications</h2>
-            </div>
-            
-            <div className="space-y-3">
-              {notifications.map(notification => (
-                <Alert 
-                  key={notification.id} 
-                  className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <p className="text-sm">
-                        {notification.type === 'crypto_completed' 
-                          ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
-                          : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
-                      </p>
-                      {notification.event && (
-                        <p className="text-xs text-gray-600 mt-1">Event: {notification.event}</p>
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">{notification.date}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {notification.needsConfirmation && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleConfirmCashPayment(notification.id)}
-                        >
-                          <CheckCircle size={14} className="mr-1" />
-                          Confirm
-                        </Button>
-                      )}
-                      <button 
-                        onClick={() => handleDismissNotification(notification.id)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </Alert>
-              ))}
-            </div>
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <Bell size={18} className="mr-2 text-nsplit-600" />
+            <h2 className="text-lg font-semibold">Notifications</h2>
           </div>
-        )}
+          
+          <div className="space-y-3">
+            {notifications.map(notification => (
+              <Alert 
+                key={notification.id} 
+                className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="text-sm">
+                      {notification.type === 'crypto_completed' 
+                        ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
+                        : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
+                    </p>
+                    {notification.event && (
+                      <p className="text-xs text-gray-600 mt-1">Event: {notification.event}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">{notification.date}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {notification.needsConfirmation && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleConfirmCashPayment(notification.id)}
+                      >
+                        <CheckCircle size={14} className="mr-1" />
+                        Confirm
+                      </Button>
+                    )}
+                    <button 
+                      onClick={() => handleDismissNotification(notification.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              </Alert>
+            ))}
+          </div>
+        </div>
         
-        {/* Settlements - Improved heading consistency and UX */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">Settlements</h2>
@@ -360,7 +341,6 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           
-          {/* Improved filter UI */}
           <div className="flex flex-col mb-5">
             <div className="flex gap-2 mb-3">
               <button 
@@ -418,7 +398,6 @@ const Dashboard: React.FC = () => {
                         {action.event} <span className="mx-1">•</span> {action.date}
                       </p>
                       
-                      {/* Show payment method for amounts you owe */}
                       {action.type === 'owe' && action.status === 'pending' && (
                         <p className="text-xs text-gray-500 mt-1 flex items-center">
                           <span className="mr-1">Preferred payment:</span>
@@ -434,7 +413,6 @@ const Dashboard: React.FC = () => {
                         </p>
                       )}
                       
-                      {/* Related expenses */}
                       {action.relatedExpenses && action.relatedExpenses.length > 0 && (
                         <div className="mt-2 pl-2 border-l-2 border-gray-200">
                           {action.relatedExpenses.slice(0, 2).map((expense, idx) => (
@@ -529,7 +507,6 @@ const Dashboard: React.FC = () => {
           )}
         </div>
         
-        {/* Events and Payments Section - Consistent heading style */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -553,7 +530,6 @@ const Dashboard: React.FC = () => {
             <div className="space-y-8">
               {events.map(event => (
                 <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                  {/* Event Card with Add Payment button in top-right */}
                   <div className="relative">
                     <EventCard event={event} />
                     <div className="absolute top-4 right-4">
@@ -571,7 +547,6 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Event Summary */}
                   <div className="p-4 border-t border-gray-200 bg-gray-50">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-sm font-medium text-gray-700">
@@ -582,7 +557,6 @@ const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     
-                    {/* Expenses List */}
                     <div className="space-y-3">
                       {event.expenses.map((expense) => (
                         <div key={expense.id} className="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
@@ -602,7 +576,7 @@ const Dashboard: React.FC = () => {
                               }`}>
                                 {expense.paidBy === 'Alex' 
                                   ? `You paid • Get back $${(expense.amount - (expense.amount / expense.splitBetween.length)).toFixed(2)}` 
-                                  : `${expense.paidBy} paid • Owe $${(expense.amount / expense.splitBetween.length)).toFixed(2)}`}
+                                  : `${expense.paidBy} paid • Owe $${(expense.amount / expense.splitBetween.length).toFixed(2)}`}
                               </p>
                             </div>
                           </div>
@@ -610,7 +584,6 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
                     
-                    {/* Event balance summary */}
                     {event.userBalance !== undefined && (
                       <div className={`mt-4 p-3 rounded-lg border ${
                         event.userBalance > 0
@@ -638,7 +611,6 @@ const Dashboard: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Add Payment button at bottom */}
                     <div className="mt-4 flex justify-end">
                       <Button
                         size="sm"
