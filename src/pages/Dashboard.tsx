@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar, Bell, X } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar, Bell, X, Clock, Cash } from 'lucide-react';
 import Button from '@/components/Button';
 import EventCard from '@/components/EventCard';
 import { useAuth } from '@/context/AuthContext';
@@ -184,12 +184,16 @@ const Dashboard: React.FC = () => {
     return true;
   });
   
-  const handlePayNow = (userId: string, amount: number) => {
-    toast({
-      title: "Payment Initiated",
-      description: `Payment of $${amount.toFixed(2)} initiated`,
+  const handlePayNow = (userId: string, amount: number, event?: string) => {
+    navigate('/crypto-payment', {
+      state: {
+        paymentDetails: {
+          to: userId,
+          amount: amount,
+          event: event
+        }
+      }
     });
-    // In a real app, this would open a payment flow
   };
   
   const handleSendReminder = (userId: string, amount: number) => {
@@ -286,7 +290,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Notifications Section */}
+        {/* Notifications Section - Improved styling */}
         {notifications.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center mb-4">
@@ -296,43 +300,40 @@ const Dashboard: React.FC = () => {
             
             <div className="space-y-3">
               {notifications.map(notification => (
-                <Alert key={notification.id} className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}>
-                  <div className="flex justify-between">
-                    <div>
-                      <AlertTitle className="font-medium">
+                <Alert 
+                  key={notification.id} 
+                  className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm">
                         {notification.type === 'crypto_completed' 
-                          ? 'Payment Completed' 
-                          : 'Payment Confirmation Required'}
-                      </AlertTitle>
-                      <AlertDescription>
-                        <p className="mt-1">
-                          {notification.type === 'crypto_completed' 
-                            ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
-                            : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
-                        </p>
-                        {notification.event && (
-                          <p className="text-sm text-gray-600 mt-1">Event: {notification.event}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-2">{notification.date}</p>
-                        
-                        {notification.needsConfirmation && (
-                          <Button 
-                            size="sm" 
-                            className="mt-3"
-                            onClick={() => handleConfirmCashPayment(notification.id)}
-                          >
-                            <CheckCircle size={14} className="mr-1" />
-                            Confirm Receipt
-                          </Button>
-                        )}
-                      </AlertDescription>
+                          ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
+                          : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
+                      </p>
+                      {notification.event && (
+                        <p className="text-xs text-gray-600 mt-1">Event: {notification.event}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">{notification.date}</p>
                     </div>
-                    <button 
-                      onClick={() => handleDismissNotification(notification.id)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X size={16} />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      {notification.needsConfirmation && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleConfirmCashPayment(notification.id)}
+                        >
+                          <CheckCircle size={14} className="mr-1" />
+                          Confirm
+                        </Button>
+                      )}
+                      <button 
+                        onClick={() => handleDismissNotification(notification.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 </Alert>
               ))}
@@ -340,7 +341,7 @@ const Dashboard: React.FC = () => {
           </div>
         )}
         
-        {/* Settlements - Improved filter UX */}
+        {/* Settlements - Improved heading consistency and UX */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">Settlements</h2>
@@ -417,6 +418,22 @@ const Dashboard: React.FC = () => {
                         {action.event} <span className="mx-1">•</span> {action.date}
                       </p>
                       
+                      {/* Show payment method for amounts you owe */}
+                      {action.type === 'owe' && action.status === 'pending' && (
+                        <p className="text-xs text-gray-500 mt-1 flex items-center">
+                          <span className="mr-1">Preferred payment:</span>
+                          {action.id === 'pay1' ? (
+                            <span className="flex items-center text-nsplit-600">
+                              <CreditCard size={12} className="mr-1" /> Crypto
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-nsplit-600">
+                              <Cash size={12} className="mr-1" /> Cash
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      
                       {/* Related expenses */}
                       {action.relatedExpenses && action.relatedExpenses.length > 0 && (
                         <div className="mt-2 pl-2 border-l-2 border-gray-200">
@@ -443,24 +460,26 @@ const Dashboard: React.FC = () => {
                       </p>
                       
                       {action.status === 'pending' && (
-                        <div className="flex flex-col space-y-2">
+                        <div className="flex flex-col space-y-1">
                           {action.type === 'owe' ? (
                             <>
                               <Button
                                 size="sm"
-                                onClick={() => handlePayNow(action.user, action.amount)}
+                                onClick={() => handlePayNow(action.user, action.amount, action.event)}
                               >
                                 <CreditCard size={14} className="mr-1" />
                                 Pay Now
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleMarkAsCompleted(action.id)}
+                              <a 
+                                href="#" 
+                                className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleMarkAsCompleted(action.id);
+                                }}
                               >
-                                <CheckCircle size={14} className="mr-1" />
-                                Mark as Completed
-                              </Button>
+                                Mark as completed
+                              </a>
                             </>
                           ) : (
                             <>
@@ -472,14 +491,16 @@ const Dashboard: React.FC = () => {
                                 <Send size={14} className="mr-1" />
                                 Remind
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleMarkAsCompleted(action.id)}
+                              <a 
+                                href="#" 
+                                className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleMarkAsCompleted(action.id);
+                                }}
                               >
-                                <CheckCircle size={14} className="mr-1" />
-                                Mark as Completed
-                              </Button>
+                                Mark as completed
+                              </a>
                             </>
                           )}
                         </div>
@@ -508,11 +529,11 @@ const Dashboard: React.FC = () => {
           )}
         </div>
         
-        {/* Events and Payments Section */}
+        {/* Events and Payments Section - Consistent heading style */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-semibold">Your Events and Payments</h2>
+              <h2 className="text-lg font-semibold">Your Events & Payments</h2>
               <p className="text-xs text-gray-500 mt-1">
                 {totalEvents} events • {totalTransactions} transactions • {totalSplitTransactions} split transactions
               </p>
@@ -525,14 +546,6 @@ const Dashboard: React.FC = () => {
                 <Plus size={16} className="mr-2" />
                 New Event
               </Button>
-              <Button 
-                variant="outline"
-                onClick={() => navigate('/add-payment')}
-                size="sm"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Payment
-              </Button>
             </div>
           </div>
           
@@ -542,9 +555,7 @@ const Dashboard: React.FC = () => {
                 <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   {/* Event Card with Add Payment button in top-right */}
                   <div className="relative">
-                    <div onClick={() => navigate(`/event/${event.id}`)}>
-                      <EventCard event={event} />
-                    </div>
+                    <EventCard event={event} />
                     <div className="absolute top-4 right-4">
                       <Button
                         size="sm"
@@ -590,8 +601,8 @@ const Dashboard: React.FC = () => {
                                   : 'text-gray-500'
                               }`}>
                                 {expense.paidBy === 'Alex' 
-                                  ? `You paid • You get back $${(expense.amount - (expense.amount / expense.splitBetween.length)).toFixed(2)}` 
-                                  : `${expense.paidBy} paid • You owe $${(expense.amount / expense.splitBetween.length).toFixed(2)}`}
+                                  ? `You paid • Get back $${(expense.amount - (expense.amount / expense.splitBetween.length)).toFixed(2)}` 
+                                  : `${expense.paidBy} paid • Owe $${(expense.amount / expense.splitBetween.length)).toFixed(2)}`}
                               </p>
                             </div>
                           </div>
