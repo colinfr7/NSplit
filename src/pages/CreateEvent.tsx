@@ -24,7 +24,7 @@ const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [eventTitle, setEventTitle] = useState('');
-  const [participants, setParticipants<{id: string; name: string; photoURL?: string; discordName?: string}[]>([]);
+  const [participants, setParticipants] = useState<{id: string; name: string; photoURL?: string; discordName?: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(true); // Default to public
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
