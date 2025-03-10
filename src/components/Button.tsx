@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Button as ShadcnButton } from "@/components/ui/button";
+import { Button as ShadcnButton, ButtonProps as ShadcnButtonProps } from "@/components/ui/button";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -11,14 +11,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
-const variantMapping = {
+const variantMapping: Record<ButtonProps['variant'] & string, ShadcnButtonProps['variant']> = {
   primary: "default",
   secondary: "secondary",
   outline: "outline",
   ghost: "ghost"
 };
 
-const sizeMapping = {
+const sizeMapping: Record<ButtonProps['size'] & string, ShadcnButtonProps['size']> = {
   sm: "sm",
   md: "default",
   lg: "lg"

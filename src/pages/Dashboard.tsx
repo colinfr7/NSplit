@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar, Bell, X, Clock, Cash } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar, Bell, X, Clock } from 'lucide-react';
 import Button from '@/components/Button';
 import EventCard from '@/components/EventCard';
 import { useAuth } from '@/context/AuthContext';
@@ -407,7 +407,7 @@ const Dashboard: React.FC = () => {
                             </span>
                           ) : (
                             <span className="flex items-center text-nsplit-600">
-                              <Cash size={12} className="mr-1" /> Cash
+                              <CreditCard size={12} className="mr-1" /> Cash
                             </span>
                           )}
                         </p>
