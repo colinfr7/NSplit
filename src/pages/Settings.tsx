@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, CreditCard, Wallet, Discord, Globe, Save } from 'lucide-react';
+import { User, CreditCard, Wallet, MessageSquare, Globe, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/Button';
 import { Input } from '@/components/ui/input';
@@ -165,7 +164,7 @@ const Settings: React.FC = () => {
           {/* Connected Accounts */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center mb-4">
-              <Discord size={18} className="mr-2 text-nsplit-600" />
+              <MessageSquare size={18} className="mr-2 text-nsplit-600" />
               <h2 className="text-lg font-semibold">Connected Accounts</h2>
             </div>
             
