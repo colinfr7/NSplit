@@ -211,6 +211,14 @@ const Dashboard: React.FC = () => {
     });
   };
 
+  const handleReportMissingPayment = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    toast({
+      title: "Missing Payment Reported",
+      description: "You've reported this payment as missing",
+    });
+  };
+
   const handleDismissNotification = (notificationId: string) => {
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
   };
@@ -275,24 +283,18 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <Bell size={18} className="mr-2 text-nsplit-600" />
-            <h2 className="text-lg font-semibold">Notifications</h2>
-          </div>
-          
-          <div className="space-y-3">
+        {notifications.length > 0 && (
+          <div className="space-y-3 mb-8">
             {notifications.map(notification => (
               <Alert 
                 key={notification.id} 
-                className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}
+                className="bg-blue-50 border-blue-100"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="text-sm">
-                      {notification.type === 'crypto_completed' 
-                        ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
-                        : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
+                    <p className="text-sm flex items-center">
+                      {notification.from} sent you <span className={`mx-1 font-medium ${notification.type === 'crypto_completed' ? 'text-green-600' : 'text-gray-700'}`}>${notification.amount.toFixed(2)}</span> 
+                      {notification.type === 'crypto_completed' ? 'via crypto payment' : 'in cash'}
                     </p>
                     {notification.event && (
                       <p className="text-xs text-gray-600 mt-1">Event: {notification.event}</p>
@@ -301,14 +303,26 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {notification.needsConfirmation && (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleConfirmCashPayment(notification.id)}
-                      >
-                        <CheckCircle size={14} className="mr-1" />
-                        Confirm
-                      </Button>
+                      <>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleConfirmCashPayment(notification.id)}
+                        >
+                          <CheckCircle size={14} className="mr-1" />
+                          Confirm
+                        </Button>
+                        <a 
+                          href="#" 
+                          className="text-xs text-red-500 hover:text-red-700 underline whitespace-nowrap"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleReportMissingPayment(notification.id);
+                          }}
+                        >
+                          Report Missing
+                        </a>
+                      </>
                     )}
                     <button 
                       onClick={() => handleDismissNotification(notification.id)}
@@ -321,190 +335,192 @@ const Dashboard: React.FC = () => {
               </Alert>
             ))}
           </div>
-        </div>
+        )}
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Settlements</h2>
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={showCompleted}
-                onCheckedChange={setShowCompleted}
-                id="show-completed"
-              />
-              <label
-                htmlFor="show-completed"
-                className="text-sm font-medium leading-none cursor-pointer"
-              >
-                Include completed
-              </label>
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Settlements</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={showCompleted}
+                  onCheckedChange={setShowCompleted}
+                  id="show-completed"
+                />
+                <label
+                  htmlFor="show-completed"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Include completed
+                </label>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex flex-col mb-5">
-            <div className="flex gap-2 mb-3">
-              <button 
-                onClick={() => setPaymentFilter('all')}
-                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-                  paymentFilter === 'all' 
-                    ? 'bg-gray-800 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              <button 
-                onClick={() => setPaymentFilter('owe')}
-                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-                  paymentFilter === 'owe' 
-                    ? 'bg-red-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                You Owe
-              </button>
-              <button 
-                onClick={() => setPaymentFilter('owed')}
-                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
-                  paymentFilter === 'owed' 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Owed to You
-              </button>
-            </div>
-          </div>
-          
-          {filteredPaymentActions.length > 0 ? (
-            <div className="space-y-4">
-              {filteredPaymentActions.map(action => (
-                <div 
-                  key={action.id} 
-                  className={`p-4 rounded-lg ${
-                    action.status === 'completed' 
-                      ? 'bg-gray-50 border border-gray-200' 
-                      : action.type === 'owe' 
-                        ? 'bg-red-50 border border-red-100' 
-                        : 'bg-green-50 border border-green-100'
+            
+            <div className="flex flex-col mb-5">
+              <div className="flex gap-2 mb-3">
+                <button 
+                  onClick={() => setPaymentFilter('all')}
+                  className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
+                    paymentFilter === 'all' 
+                      ? 'bg-gray-800 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">
-                        {action.type === 'owe' ? `You owe ${action.user}` : `${action.user} owes you`}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {action.event} <span className="mx-1">•</span> {action.date}
-                      </p>
-                      
-                      {action.type === 'owe' && action.status === 'pending' && (
-                        <p className="text-xs text-gray-500 mt-1 flex items-center">
-                          <span className="mr-1">Preferred payment:</span>
-                          {action.id === 'pay1' ? (
-                            <span className="flex items-center text-nsplit-600">
-                              <CreditCard size={12} className="mr-1" /> Crypto
-                            </span>
-                          ) : (
-                            <span className="flex items-center text-nsplit-600">
-                              <CreditCard size={12} className="mr-1" /> Cash
-                            </span>
-                          )}
+                  All
+                </button>
+                <button 
+                  onClick={() => setPaymentFilter('owe')}
+                  className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
+                    paymentFilter === 'owe' 
+                      ? 'bg-red-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  You Owe
+                </button>
+                <button 
+                  onClick={() => setPaymentFilter('owed')}
+                  className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
+                    paymentFilter === 'owed' 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Owed to You
+                </button>
+              </div>
+            </div>
+            
+            {filteredPaymentActions.length > 0 ? (
+              <div className="space-y-4">
+                {filteredPaymentActions.map(action => (
+                  <div 
+                    key={action.id} 
+                    className={`p-4 rounded-lg ${
+                      action.status === 'completed' 
+                        ? 'bg-gray-50 border border-gray-200' 
+                        : action.type === 'owe' 
+                          ? 'bg-red-50 border border-red-100' 
+                          : 'bg-green-50 border border-green-100'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">
+                          {action.type === 'owe' ? `You owe ${action.user}` : `${action.user} owes you`}
                         </p>
-                      )}
-                      
-                      {action.relatedExpenses && action.relatedExpenses.length > 0 && (
-                        <div className="mt-2 pl-2 border-l-2 border-gray-200">
-                          {action.relatedExpenses.slice(0, 2).map((expense, idx) => (
-                            <p key={idx} className="text-xs text-gray-500">
-                              {expense.title}: ${expense.amount.toFixed(2)} <span className="text-gray-400">{expense.date}</span>
-                            </p>
-                          ))}
-                          {action.relatedExpenses.length > 2 && (
-                            <p className="text-xs text-gray-500">+{action.relatedExpenses.length - 2} more expenses</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center">
-                      <p className={`font-semibold mr-3 ${
-                        action.status === 'completed' 
-                          ? 'text-gray-600' 
-                          : action.type === 'owe' 
-                            ? 'text-red-600' 
-                            : 'text-green-600'
-                      }`}>
-                        ${action.amount.toFixed(2)}
-                      </p>
-                      
-                      {action.status === 'pending' && (
-                        <div className="flex flex-col space-y-1">
-                          {action.type === 'owe' ? (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => handlePayNow(action.user, action.amount, action.event)}
-                              >
-                                <CreditCard size={14} className="mr-1" />
-                                Pay Now
-                              </Button>
-                              <a 
-                                href="#" 
-                                className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleMarkAsCompleted(action.id);
-                                }}
-                              >
-                                Mark as completed
-                              </a>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSendReminder(action.user, action.amount)}
-                              >
-                                <Send size={14} className="mr-1" />
-                                Remind
-                              </Button>
-                              <a 
-                                href="#" 
-                                className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleMarkAsCompleted(action.id);
-                                }}
-                              >
-                                Mark as completed
-                              </a>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      
-                      {action.status === 'completed' && (
-                        <div className="flex items-center text-green-600">
-                          <CheckCircle size={16} className="mr-1" />
-                          <span className="text-sm">Settled</span>
-                        </div>
-                      )}
+                        <p className="text-sm text-gray-600 mt-1">
+                          {action.event} <span className="mx-1">•</span> {action.date}
+                        </p>
+                        
+                        {action.type === 'owe' && action.status === 'pending' && (
+                          <p className="text-xs text-gray-500 mt-1 flex items-center">
+                            <span className="mr-1">Preferred payment:</span>
+                            {action.id === 'pay1' ? (
+                              <span className="flex items-center text-nsplit-600">
+                                <CreditCard size={12} className="mr-1" /> Crypto
+                              </span>
+                            ) : (
+                              <span className="flex items-center text-nsplit-600">
+                                <CreditCard size={12} className="mr-1" /> Cash
+                              </span>
+                            )}
+                          </p>
+                        )}
+                        
+                        {action.relatedExpenses && action.relatedExpenses.length > 0 && (
+                          <div className="mt-2 pl-2 border-l-2 border-gray-200">
+                            {action.relatedExpenses.slice(0, 2).map((expense, idx) => (
+                              <p key={idx} className="text-xs text-gray-500">
+                                {expense.title}: ${expense.amount.toFixed(2)} <span className="text-gray-400">{expense.date}</span>
+                              </p>
+                            ))}
+                            {action.relatedExpenses.length > 2 && (
+                              <p className="text-xs text-gray-500">+{action.relatedExpenses.length - 2} more expenses</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        <p className={`font-semibold mr-3 ${
+                          action.status === 'completed' 
+                            ? 'text-gray-600' 
+                            : action.type === 'owe' 
+                              ? 'text-red-600' 
+                              : 'text-green-600'
+                        }`}>
+                          ${action.amount.toFixed(2)}
+                        </p>
+                        
+                        {action.status === 'pending' && (
+                          <div className="flex flex-col space-y-1">
+                            {action.type === 'owe' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handlePayNow(action.user, action.amount, action.event)}
+                                >
+                                  <CreditCard size={14} className="mr-1" />
+                                  Pay Now
+                                </Button>
+                                <a 
+                                  href="#" 
+                                  className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleMarkAsCompleted(action.id);
+                                  }}
+                                >
+                                  Mark as completed
+                                </a>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSendReminder(action.user, action.amount)}
+                                >
+                                  <Send size={14} className="mr-1" />
+                                  Remind
+                                </Button>
+                                <a 
+                                  href="#" 
+                                  className="text-xs text-center text-gray-500 hover:text-gray-700 underline"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleMarkAsCompleted(action.id);
+                                  }}
+                                >
+                                  Mark as completed
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        
+                        {action.status === 'completed' && (
+                          <div className="flex items-center text-green-600">
+                            <CheckCircle size={16} className="mr-1" />
+                            <span className="text-sm">Settled</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 py-4">
-              {paymentFilter === 'all' && !showCompleted && "No pending settlements"}
-              {paymentFilter === 'all' && showCompleted && "No settlements found"}
-              {paymentFilter === 'owe' && !showCompleted && "You don't owe anyone right now"}
-              {paymentFilter === 'owe' && showCompleted && "No payments you owe found"}
-              {paymentFilter === 'owed' && !showCompleted && "No one owes you right now"}
-              {paymentFilter === 'owed' && showCompleted && "No payments owed to you found"}
-            </p>
-          )}
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-4">
+                {paymentFilter === 'all' && !showCompleted && "No pending settlements"}
+                {paymentFilter === 'all' && showCompleted && "No settlements found"}
+                {paymentFilter === 'owe' && !showCompleted && "You don't owe anyone right now"}
+                {paymentFilter === 'owe' && showCompleted && "No payments you owe found"}
+                {paymentFilter === 'owed' && !showCompleted && "No one owes you right now"}
+                {paymentFilter === 'owed' && showCompleted && "No payments owed to you found"}
+              </p>
+            )}
+          </div>
         </div>
         
         <div className="mb-8">
@@ -531,7 +547,53 @@ const Dashboard: React.FC = () => {
               {events.map(event => (
                 <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="relative">
-                    <EventCard event={event} />
+                    <div 
+                      className="bg-white p-5 cursor-pointer border-b border-gray-200"
+                      onClick={() => navigate(`/event/${event.id}`)}
+                    >
+                      <h3 className="font-medium text-lg text-gray-900">{event.title}</h3>
+                      
+                      <div className="flex items-center mt-2 text-sm text-gray-500">
+                        <Calendar size={14} className="mr-1" />
+                        <span>{event.date}</span>
+                        <span className="mx-2">•</span>
+                        <Users size={14} className="mr-1" />
+                        <span>{event.participants} participants</span>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                        <div>
+                          <p className="text-xs text-gray-500">Total expenses</p>
+                          <p className="font-semibold text-gray-900">${event.totalExpenses.toFixed(2)}</p>
+                        </div>
+                        
+                        <div className="text-right">
+                          {event.userBalance !== undefined && (
+                            <div className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full ${
+                              event.userBalance > 0
+                                ? 'bg-green-50 text-green-600' 
+                                : event.userBalance < 0
+                                  ? 'bg-red-50 text-red-600' 
+                                  : 'bg-gray-50 text-gray-600'
+                            } text-xs font-medium`}>
+                              {event.userBalance > 0 && (
+                                <>
+                                  <ArrowUpRight size={12} className="mr-1" />
+                                  Balance: Get back ${Math.abs(event.userBalance).toFixed(2)}
+                                </>
+                              )}
+                              {event.userBalance < 0 && (
+                                <>
+                                  <ArrowDownRight size={12} className="mr-1" />
+                                  Balance: Owe ${Math.abs(event.userBalance).toFixed(2)}
+                                </>
+                              )}
+                              {event.userBalance === 0 && 'Balance: Settled'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     <div className="absolute top-4 right-4">
                       <Button
                         size="sm"

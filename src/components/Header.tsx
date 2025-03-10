@@ -4,7 +4,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import Button from './Button';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -69,22 +75,39 @@ const Header: React.FC = () => {
               <Link to="/add-payment" className="text-sm font-medium text-gray-700 hover:text-nsplit-600 transition-colors">
                 Add Payment
               </Link>
-              <Link to="/dashboard" className="text-sm font-medium text-gray-700 hover:text-nsplit-600 transition-colors">
-                My Balance
+              <Link 
+                to="/dashboard" 
+                className={`text-sm font-medium ${
+                  location.pathname === '/dashboard' 
+                    ? 'text-nsplit-600 font-semibold' 
+                    : 'text-gray-700 hover:text-nsplit-600'
+                } transition-colors`}
+              >
+                Dashboard
               </Link>
               <div className="ml-4 flex items-center space-x-3">
-                <div 
-                  className="flex items-center space-x-2 cursor-pointer group relative"
-                  onClick={signOut}
-                >
-                  <div className="w-8 h-8 rounded-full bg-nsplit-100 flex items-center justify-center text-nsplit-700">
-                    <span className="text-sm font-medium">{user?.displayName?.charAt(0) || 'U'}</span>
-                  </div>
-                  <LogOut size={16} className="text-gray-500 group-hover:text-nsplit-600" />
-                  <div className="absolute -bottom-8 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                    Sign Out
-                  </div>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center space-x-2 focus:outline-none">
+                    <div className="w-8 h-8 rounded-full bg-nsplit-100 flex items-center justify-center text-nsplit-700">
+                      <span className="text-sm font-medium">{user?.displayName?.charAt(0) || 'U'}</span>
+                    </div>
+                    <ChevronDown size={16} className="text-gray-500" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => window.location.href = '/dashboard'}>
+                      <LayoutDashboard size={16} className="mr-2" />
+                      <span>Dashboard</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = '/settings'}>
+                      <Settings size={16} className="mr-2" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut size={16} className="mr-2" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </>
           )}
@@ -161,10 +184,21 @@ const Header: React.FC = () => {
                 </Link>
                 <Link 
                   to="/dashboard" 
+                  className={`block px-4 py-2 rounded-md ${
+                    location.pathname === '/dashboard' 
+                      ? 'bg-nsplit-50 text-nsplit-600 font-medium' 
+                      : 'text-gray-700 hover:bg-nsplit-50'
+                  } transition-colors`}
+                  onClick={() => setIsMobileNavOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/settings" 
                   className="block px-4 py-2 rounded-md text-gray-700 hover:bg-nsplit-50 transition-colors"
                   onClick={() => setIsMobileNavOpen(false)}
                 >
-                  My Balance
+                  Settings
                 </Link>
                 <button 
                   onClick={() => {

@@ -7,6 +7,7 @@ import Index from './pages/Index';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import AddPayment from './pages/AddPayment';
@@ -29,6 +30,7 @@ function App() {
               <Route path="/sign-in" element={<SignIn />} />
               <Route path="/sign-up" element={<SignUp />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/create-event" element={<CreateEvent />} />
               <Route path="/event/:id" element={<EventDetail />} />
               <Route path="/event/:id/add-payment" element={<AddPayment />} />
