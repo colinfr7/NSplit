@@ -55,16 +55,16 @@ const EventCard: React.FC<EventCardProps> = ({ event }) => {
               {isPositive && (
                 <>
                   <ArrowUpRight size={12} className="mr-1" />
-                  Get back ${Math.abs(event.userBalance).toFixed(2)}
+                  Balance: Get back ${Math.abs(event.userBalance).toFixed(2)}
                 </>
               )}
               {isNegative && (
                 <>
                   <ArrowDownRight size={12} className="mr-1" />
-                  Owe ${Math.abs(event.userBalance).toFixed(2)}
+                  Balance: Owe ${Math.abs(event.userBalance).toFixed(2)}
                 </>
               )}
-              {!isPositive && !isNegative && 'Settled up'}
+              {!isPositive && !isNegative && 'Balance: Settled'}
             </div>
           ) : (
             <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-nsplit-50 text-nsplit-600 text-xs font-medium">

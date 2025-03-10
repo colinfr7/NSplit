@@ -1,18 +1,20 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar } from 'lucide-react';
 import Button from '@/components/Button';
 import EventCard from '@/components/EventCard';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import ExpenseCard from '@/components/ExpenseCard';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'owe' | 'owed' | 'completed'>('all');
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'owe' | 'owed'>('all');
   
   // Redirect if not authenticated
   React.useEffect(() => {
@@ -137,10 +139,11 @@ const Dashboard: React.FC = () => {
   const openOwingTransactions = paymentActions.filter(action => action.type === 'owe' && action.status === 'pending').length;
   
   const filteredPaymentActions = paymentActions.filter(action => {
-    if (paymentFilter === 'all') return action.status === 'pending';
-    if (paymentFilter === 'owe') return action.type === 'owe' && action.status === 'pending';
-    if (paymentFilter === 'owed') return action.type === 'receive' && action.status === 'pending';
-    if (paymentFilter === 'completed') return action.status === 'completed';
+    if (!showCompleted && action.status === 'completed') return false;
+    
+    if (paymentFilter === 'all') return true;
+    if (paymentFilter === 'owe') return action.type === 'owe';
+    if (paymentFilter === 'owed') return action.type === 'receive';
     return true;
   });
   
@@ -163,18 +166,18 @@ const Dashboard: React.FC = () => {
       <div className="max-w-lg mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-8">Dashboard</h1>
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* Total Balance */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        {/* Stats Cards - Make Balance more prominent */}
+        <div className="grid grid-cols-1 gap-4 mb-8">
+          {/* Total Balance - Made larger */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-sm font-medium text-gray-500 mb-1">Total Balance</h2>
             <div className="flex items-center">
               {isPositiveTotalBalance ? (
-                <ArrowUpRight size={20} className="text-green-500 mr-2" />
+                <ArrowUpRight size={24} className="text-green-500 mr-2" />
               ) : (
-                <ArrowDownRight size={20} className="text-red-500 mr-2" />
+                <ArrowDownRight size={24} className="text-red-500 mr-2" />
               )}
-              <p className={`text-2xl font-bold ${
+              <p className={`text-3xl font-bold ${
                 isPositiveTotalBalance ? 'text-green-600' : 'text-red-600'
               }`}>
                 ${Math.abs(totalBalance).toFixed(2)}
@@ -187,53 +190,60 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
           
-          {/* Money Owed to You */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <h2 className="text-sm font-medium text-gray-500 mb-1">You are owed</h2>
-            <div className="flex items-center">
-              <ArrowUpRight size={20} className="text-green-500 mr-2" />
-              <p className="text-2xl font-bold text-green-600">
-                ${totalOwed.toFixed(2)}
+          {/* Secondary cards in a single row */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Money Owed to You */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h2 className="text-sm font-medium text-gray-500 mb-1">You are owed</h2>
+              <div className="flex items-center">
+                <ArrowUpRight size={20} className="text-green-500 mr-2" />
+                <p className="text-2xl font-bold text-green-600">
+                  ${totalOwed.toFixed(2)}
+                </p>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {openOwedTransactions} open {openOwedTransactions === 1 ? 'transaction' : 'transactions'}
               </p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              {openOwedTransactions} open {openOwedTransactions === 1 ? 'transaction' : 'transactions'}
-            </p>
-          </div>
-          
-          {/* Money You Owe */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <h2 className="text-sm font-medium text-gray-500 mb-1">You owe</h2>
-            <div className="flex items-center">
-              <ArrowDownRight size={20} className="text-red-500 mr-2" />
-              <p className="text-2xl font-bold text-red-600">
-                ${totalOwing.toFixed(2)}
+            
+            {/* Money You Owe */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h2 className="text-sm font-medium text-gray-500 mb-1">You owe</h2>
+              <div className="flex items-center">
+                <ArrowDownRight size={20} className="text-red-500 mr-2" />
+                <p className="text-2xl font-bold text-red-600">
+                  ${totalOwing.toFixed(2)}
+                </p>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {openOwingTransactions} open {openOwingTransactions === 1 ? 'transaction' : 'transactions'}
               </p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              {openOwingTransactions} open {openOwingTransactions === 1 ? 'transaction' : 'transactions'}
-            </p>
           </div>
         </div>
         
-        {/* Payment Settlements */}
+        {/* Settlements - Improved filter UX */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">Settlements</h2>
-            <div className="flex items-center space-x-2">
+          </div>
+          
+          {/* Improved filter UI */}
+          <div className="flex flex-col mb-5">
+            <div className="flex gap-2 mb-3">
               <button 
                 onClick={() => setPaymentFilter('all')}
-                className={`px-3 py-1 text-xs rounded-full ${
+                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
                   paymentFilter === 'all' 
                     ? 'bg-gray-800 text-white' 
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                All Pending
+                All
               </button>
               <button 
                 onClick={() => setPaymentFilter('owe')}
-                className={`px-3 py-1 text-xs rounded-full ${
+                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
                   paymentFilter === 'owe' 
                     ? 'bg-red-600 text-white' 
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -243,7 +253,7 @@ const Dashboard: React.FC = () => {
               </button>
               <button 
                 onClick={() => setPaymentFilter('owed')}
-                className={`px-3 py-1 text-xs rounded-full ${
+                className={`flex-1 px-4 py-2 text-sm rounded-md transition-colors ${
                   paymentFilter === 'owed' 
                     ? 'bg-green-600 text-white' 
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -251,17 +261,22 @@ const Dashboard: React.FC = () => {
               >
                 Owed to You
               </button>
-              <button 
-                onClick={() => setPaymentFilter('completed')}
-                className={`px-3 py-1 text-xs rounded-full ${
-                  paymentFilter === 'completed' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <CheckCircle size={12} className="mr-1 inline" />
-                Completed
-              </button>
+            </div>
+            
+            <div className="flex items-center justify-end">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={showCompleted}
+                  onCheckedChange={setShowCompleted}
+                  id="show-completed"
+                />
+                <label
+                  htmlFor="show-completed"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Include completed
+                </label>
+              </div>
             </div>
           </div>
           
@@ -346,18 +361,20 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <p className="text-center text-gray-500 py-4">
-              {paymentFilter === 'all' && "No pending settlements"}
-              {paymentFilter === 'owe' && "You don't owe anyone right now"}
-              {paymentFilter === 'owed' && "No one owes you right now"}
-              {paymentFilter === 'completed' && "No completed settlements yet"}
+              {paymentFilter === 'all' && !showCompleted && "No pending settlements"}
+              {paymentFilter === 'all' && showCompleted && "No settlements found"}
+              {paymentFilter === 'owe' && !showCompleted && "You don't owe anyone right now"}
+              {paymentFilter === 'owe' && showCompleted && "No payments you owe found"}
+              {paymentFilter === 'owed' && !showCompleted && "No one owes you right now"}
+              {paymentFilter === 'owed' && showCompleted && "No payments owed to you found"}
             </p>
           )}
         </div>
         
-        {/* Events and Transactions Section */}
+        {/* Events and Payments Section */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Your Events and Transactions</h2>
+            <h2 className="text-lg font-semibold">Your Events and Payments</h2>
             <div className="flex space-x-3">
               <Button 
                 onClick={() => navigate('/create-event')}
@@ -386,6 +403,21 @@ const Dashboard: React.FC = () => {
                     <EventCard event={event} />
                   </div>
                   
+                  {/* Add Payment button for each event */}
+                  <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/event/${event.id}/add-payment`);
+                      }}
+                    >
+                      <Plus size={14} className="mr-1" />
+                      Add Payment
+                    </Button>
+                  </div>
+                  
                   {/* Event Summary */}
                   <div className="p-4 border-t border-gray-200 bg-gray-50">
                     <div className="flex justify-between items-center mb-3">
@@ -405,7 +437,7 @@ const Dashboard: React.FC = () => {
                             <div>
                               <p className="font-medium">{expense.title}</p>
                               <p className="text-xs text-gray-500 mt-1">
-                                Paid by {expense.paidBy} • Split {expense.splitBetween.length} ways
+                                {expense.date}
                               </p>
                             </div>
                             <div className="text-right">
@@ -415,17 +447,37 @@ const Dashboard: React.FC = () => {
                                   ? 'text-green-600' 
                                   : 'text-gray-500'
                               }`}>
-                                {expense.paidBy === 'Alex' ? (
-                                  `You paid • You get back $${(expense.amount - (expense.amount / expense.splitBetween.length)).toFixed(2)}`
-                                ) : (
-                                  `You owe $${(expense.amount / expense.splitBetween.length).toFixed(2)}`
-                                )}
+                                {expense.paidBy === 'Alex' 
+                                  ? `You paid • You get back $${(expense.amount - (expense.amount / expense.splitBetween.length)).toFixed(2)}` 
+                                  : `${expense.paidBy} paid • You owe $${(expense.amount / expense.splitBetween.length).toFixed(2)}`}
                               </p>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Event balance summary */}
+                    {event.userBalance !== 0 && (
+                      <div className={`mt-4 p-3 rounded-lg border ${
+                        event.userBalance > 0
+                          ? 'bg-green-50 border-green-100'
+                          : 'bg-red-50 border-red-100'
+                      }`}>
+                        <p className="font-medium text-sm">
+                          Balance for this event: 
+                          <span className={`ml-2 ${
+                            event.userBalance > 0
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}>
+                            {event.userBalance > 0 
+                              ? `You get back $${event.userBalance.toFixed(2)}` 
+                              : `You owe $${Math.abs(event.userBalance).toFixed(2)}`}
+                          </span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
