@@ -32,7 +32,7 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
-              <span className="text-2xl font-bold bg-gradient-to-r from-nsplit-800 to-nsplit-600 text-transparent bg-clip-text">nSplit</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-nsplit-800 to-nsplit-600 text-transparent bg-clip-text">NSplit</span>
             </Link>
           </div>
           
@@ -40,16 +40,6 @@ const Header: React.FC = () => {
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
                 <>
-                  <Link 
-                    to="/dashboard" 
-                    className={`px-4 py-2 rounded-md text-sm font-medium ${
-                      location.pathname === '/dashboard' 
-                        ? 'bg-nsplit-600 text-white' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    Dashboard
-                  </Link>
                   <Link 
                     to="/create-event" 
                     className="text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium"
@@ -61,6 +51,16 @@ const Header: React.FC = () => {
                     className="text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Add Payment
+                  </Link>
+                  <Link 
+                    to="/dashboard" 
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      location.pathname === '/dashboard' 
+                        ? 'bg-nsplit-600 text-white' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Dashboard
                   </Link>
                   
                   <DropdownMenu>

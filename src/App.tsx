@@ -15,6 +15,8 @@ import AddPayment from './pages/AddPayment';
 import CryptoPayment from './pages/CryptoPayment';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
+import EventQR from './pages/EventQR';
+import PaymentQR from './pages/PaymentQR';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,8 @@ function App() {
                 <Route path="/add-payment" element={<AddPayment />} />
                 <Route path="/crypto-payment" element={<CryptoPayment />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/event-qr/:eventId" element={<EventQR />} />
+                <Route path="/payment-qr/:paymentId" element={<PaymentQR />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Users, Globe, Lock, Info, QrCode, Search, Check, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, X, Users, Globe, Lock, Info, QrCode, Search, Check, Calendar } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -29,7 +28,6 @@ const CreateEvent: React.FC = () => {
   const [isPublic, setIsPublic] = useState(true); // Default to public
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showQRCode, setShowQRCode] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState('');
   
   // Event date settings
@@ -208,12 +206,29 @@ const CreateEvent: React.FC = () => {
     }, 1000);
   };
   
-  // Filter suggestions based on search term
-  const filteredSuggestions = SAMPLE_USERS.filter(user => 
-    newParticipantName && 
-    user.name.toLowerCase().includes(newParticipantName.toLowerCase()) &&
-    !participants.some(p => p.id === user.id)
-  );
+  const handleCreateAndOpenQR = () => {
+    // Validate the form first
+    if (!eventTitle.trim()) {
+      toast.error("Please enter an event title");
+      return;
+    }
+    
+    const filledParticipants = participants.filter(p => p.name.trim() !== '');
+    if (filledParticipants.length < 1) {
+      toast.error("Please add at least 1 participant");
+      return;
+    }
+    
+    // Simulate event creation
+    setLoading(true);
+    
+    // Mock API call to create event then redirect to QR code page
+    setTimeout(() => {
+      toast.success("Event created! Open QR code for sharing.");
+      navigate('/event-qr/123'); // Navigate to the new QR code page with event ID
+      setLoading(false);
+    }, 1000);
+  };
   
   const formatDateRange = () => {
     if (isMultiDay && endDate) {
@@ -221,6 +236,12 @@ const CreateEvent: React.FC = () => {
     }
     return format(startDate, "PPP");
   };
+  
+  const filteredSuggestions = SAMPLE_USERS.filter(user => 
+    newParticipantName && 
+    user.name.toLowerCase().includes(newParticipantName.toLowerCase()) &&
+    !participants.some(p => p.id === user.id)
+  );
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -367,33 +388,7 @@ const CreateEvent: React.FC = () => {
                   Participants
                 </div>
               </label>
-              <div className="flex items-center space-x-2">
-                <Popover open={showQRCode} onOpenChange={setShowQRCode}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="text-sm text-nsplit-600 flex items-center hover:text-nsplit-700"
-                    >
-                      <QrCode size={16} className="mr-1" />
-                      QR Join
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80" align="end">
-                    <div className="p-4 space-y-4">
-                      <h3 className="font-medium text-center">Join this event</h3>
-                      <div className="bg-white border p-1 rounded-md mx-auto w-60 h-60 flex items-center justify-center">
-                        <div className="text-center text-gray-500 text-sm">
-                          QR code will appear here after event creation
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 text-center">
-                        Scan this code to join the event directly
-                      </p>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                <span className="text-xs text-gray-500">{participants.length} {participants.length === 1 ? 'person' : 'people'}</span>
-              </div>
+              <span className="text-xs text-gray-500">{participants.length} {participants.length === 1 ? 'person' : 'people'}</span>
             </div>
             
             <div className="space-y-3">
@@ -404,14 +399,19 @@ const CreateEvent: React.FC = () => {
                     value={participant.name}
                     onChange={(e) => handleParticipantChange(index, e.target.value)}
                     placeholder={`Person ${index + 1}`}
-                    className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                    className={`flex-grow px-4 py-2 border rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors ${
+                      user && participant.id === user.uid 
+                        ? 'bg-nsplit-50 border-nsplit-300' 
+                        : 'border-gray-300'
+                    }`}
+                    readOnly={user && participant.id === user.uid}
                   />
                   <button
                     type="button"
                     onClick={() => removeParticipant(index)}
                     className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={18} />
+                    <X size={18} />
                   </button>
                 </div>
               ))}
@@ -459,6 +459,10 @@ const CreateEvent: React.FC = () => {
                 <Check size={16} />
               </button>
             </div>
+            
+            <p className="text-xs text-gray-500 mt-2">
+              More participants can be added later by scanning a QR code.
+            </p>
           </div>
           
           <div className="pt-4 space-y-3">
@@ -469,6 +473,16 @@ const CreateEvent: React.FC = () => {
               isLoading={loading}
             >
               Create Event & Add First Expense
+            </Button>
+            
+            <Button 
+              type="button"
+              onClick={handleCreateAndOpenQR} 
+              variant="secondary" 
+              fullWidth
+              isLoading={loading}
+            >
+              Create Event & Open QR Code
             </Button>
             
             <Button 
