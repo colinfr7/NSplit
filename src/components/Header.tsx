@@ -57,7 +57,7 @@ const Header: React.FC = () => {
                     className={`px-4 py-2 rounded-md text-sm font-medium ${
                       location.pathname === '/dashboard' 
                         ? 'bg-nsplit-600 text-white' 
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'font-semibold text-nsplit-600 hover:bg-gray-100'
                     }`}
                   >
                     Dashboard
@@ -67,7 +67,7 @@ const Header: React.FC = () => {
                     <DropdownMenuTrigger className="focus:outline-none">
                       <div className="flex items-center space-x-2 cursor-pointer">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src="/placeholder.svg" />
+                          <AvatarImage src={user?.photoURL || "/placeholder.svg"} />
                           <AvatarFallback className="bg-nsplit-100 text-nsplit-700">
                             {user?.displayName?.charAt(0) || 'U'}
                           </AvatarFallback>
@@ -80,6 +80,9 @@ const Header: React.FC = () => {
                         <div className="flex flex-col">
                           <span>{user?.displayName || 'User'}</span>
                           <span className="text-xs text-gray-500">{user?.email}</span>
+                          {user?.discordName && (
+                            <span className="text-xs text-gray-500">{user.discordName}</span>
+                          )}
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -117,6 +120,7 @@ const Header: React.FC = () => {
             </div>
           </div>
           
+          {/* Mobile menu button */}
           <div className="-mr-2 flex md:hidden">
             <button
               onClick={toggleMenu}
@@ -134,6 +138,7 @@ const Header: React.FC = () => {
         </div>
       </div>
       
+      {/* Mobile menu */}
       {isOpen && (
         <div className="md:hidden bg-white border-b border-gray-200">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
@@ -144,7 +149,7 @@ const Header: React.FC = () => {
                   className={`block px-3 py-2 rounded-md text-base font-medium ${
                     location.pathname === '/dashboard' 
                       ? 'bg-nsplit-600 text-white' 
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'font-semibold text-nsplit-600 hover:bg-gray-100'
                   }`}
                   onClick={closeMenu}
                 >

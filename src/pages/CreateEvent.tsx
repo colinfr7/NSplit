@@ -9,21 +9,22 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Sample data for user suggestions - in a real app this would come from an API
 const SAMPLE_USERS = [
-  { id: 'user1', name: 'Alex Johnson' },
-  { id: 'user2', name: 'Maria Garcia' },
-  { id: 'user3', name: 'John Smith' },
-  { id: 'user4', name: 'Sarah Lee' },
-  { id: 'user5', name: 'David Kim' },
+  { id: 'user1', name: 'Alex Johnson', photoURL: 'https://randomuser.me/api/portraits/men/32.jpg', discordName: 'alex_j#1234' },
+  { id: 'user2', name: 'Maria Garcia', photoURL: 'https://randomuser.me/api/portraits/women/44.jpg', discordName: 'maria_g#5678' },
+  { id: 'user3', name: 'John Smith', photoURL: 'https://randomuser.me/api/portraits/men/36.jpg' },
+  { id: 'user4', name: 'Sarah Lee', photoURL: 'https://randomuser.me/api/portraits/women/28.jpg', discordName: 'sarahlee#2345' },
+  { id: 'user5', name: 'David Kim', photoURL: 'https://randomuser.me/api/portraits/men/42.jpg' },
 ];
 
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [eventTitle, setEventTitle] = useState('');
-  const [participants, setParticipants] = useState<{id: string; name: string}[]>([]);
+  const [participants, setParticipants<{id: string; name: string; photoURL?: string; discordName?: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [isPublic, setIsPublic] = useState(true); // Default to public
   const [showVisibilityTooltip, setShowVisibilityTooltip] = useState(false);
@@ -43,6 +44,8 @@ const CreateEvent: React.FC = () => {
       const currentUser = {
         id: user.uid,
         name: user.displayName || 'You (current user)',
+        photoURL: user.photoURL,
+        discordName: user.discordName,
       };
       
       // Only add if the user is not already in the participants list
@@ -394,18 +397,26 @@ const CreateEvent: React.FC = () => {
             <div className="space-y-3">
               {participants.map((participant, index) => (
                 <div key={index} className="flex items-center">
-                  <input
-                    type="text"
-                    value={participant.name}
-                    onChange={(e) => handleParticipantChange(index, e.target.value)}
-                    placeholder={`Person ${index + 1}`}
-                    className={`flex-grow px-4 py-2 border rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors ${
-                      user && participant.id === user.uid 
-                        ? 'bg-nsplit-50 border-nsplit-300' 
-                        : 'border-gray-300'
-                    }`}
-                    readOnly={user && participant.id === user.uid}
-                  />
+                  <div className={`flex-grow flex items-center px-4 py-2 border rounded-md ${
+                    user && participant.id === user.uid || participant.photoURL
+                      ? 'bg-nsplit-50 border-nsplit-200'
+                      : 'border-gray-300'
+                  }`}>
+                    {participant.photoURL && (
+                      <Avatar className="h-6 w-6 mr-2">
+                        <AvatarImage src={participant.photoURL} />
+                        <AvatarFallback className="bg-nsplit-100 text-nsplit-700 text-xs">
+                          {participant.name?.charAt(0) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className="flex-grow">
+                      <p className="text-sm font-medium">{participant.name}</p>
+                      {participant.discordName && (
+                        <p className="text-xs text-gray-500">{participant.discordName}</p>
+                      )}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeParticipant(index)}
@@ -436,15 +447,26 @@ const CreateEvent: React.FC = () => {
                   </div>
                 </PopoverTrigger>
                 {filteredSuggestions.length > 0 && (
-                  <PopoverContent className="w-[200px] p-0" align="start">
+                  <PopoverContent className="w-[280px] p-0" align="start">
                     <div className="overflow-y-auto max-h-56">
                       {filteredSuggestions.map((suggestion) => (
                         <div
                           key={suggestion.id}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
                           onClick={() => handleSelectUser(suggestion)}
                         >
-                          {suggestion.name}
+                          <Avatar className="h-6 w-6 mr-2">
+                            <AvatarImage src={suggestion.photoURL} />
+                            <AvatarFallback className="bg-nsplit-100 text-nsplit-700 text-xs">
+                              {suggestion.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{suggestion.name}</p>
+                            {suggestion.discordName && (
+                              <p className="text-xs text-gray-500">{suggestion.discordName}</p>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -468,31 +490,33 @@ const CreateEvent: React.FC = () => {
           <div className="pt-4 space-y-3">
             <Button 
               type="button" 
-              onClick={handleCreateAndAddExpense} 
+              onClick={handleCreateAndOpenQR} 
               fullWidth 
               isLoading={loading}
             >
-              Create Event & Add First Expense
-            </Button>
-            
-            <Button 
-              type="button"
-              onClick={handleCreateAndOpenQR} 
-              variant="secondary" 
-              fullWidth
-              isLoading={loading}
-            >
+              <QrCode size={16} className="mr-2" />
               Create Event & Open QR Code
             </Button>
             
             <Button 
-              type="submit" 
-              variant="outline" 
-              fullWidth 
+              type="button"
+              onClick={handleCreateAndAddExpense} 
+              variant="secondary" 
+              fullWidth
               isLoading={loading}
             >
-              Create Event Only
+              <Plus size={16} className="mr-2" />
+              Create Event & Add First Expense
             </Button>
+            
+            <div className="flex justify-center">
+              <button 
+                type="submit"
+                className="mt-2 text-nsplit-600 hover:text-nsplit-700 text-sm font-medium"
+              >
+                Create Event Only
+              </button>
+            </div>
           </div>
         </form>
       </div>

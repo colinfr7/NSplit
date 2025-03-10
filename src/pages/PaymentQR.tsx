@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, QrCode, Check, Share2, Copy } from 'lucide-react';
+import { ArrowLeft, QrCode, Share2 } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from 'sonner';
 
@@ -14,11 +14,6 @@ const PaymentQR: React.FC = () => {
     navigator.clipboard.writeText(url)
       .then(() => toast.success("Payment link copied to clipboard!"))
       .catch(() => toast.error("Failed to copy payment link"));
-  };
-  
-  const handleMarkAsPaid = () => {
-    toast.success("Payment marked as complete!");
-    navigate(`/dashboard`);
   };
   
   return (
@@ -53,23 +48,14 @@ const PaymentQR: React.FC = () => {
             variant="outline"
             fullWidth
           >
-            <Share2 size={16} />
+            <Share2 size={16} className="mr-1" />
             Copy Payment Link
           </Button>
         </div>
         
         <div className="space-y-4">
           <Button 
-            onClick={handleMarkAsPaid}
-            fullWidth
-          >
-            <Check size={16} />
-            Mark as Paid
-          </Button>
-          
-          <Button 
             onClick={() => navigate(`/event/${paymentId?.split('-')[0] || '123'}`)}
-            variant="outline"
             fullWidth
           >
             Return to Event

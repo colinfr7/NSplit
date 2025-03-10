@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, QrCode, Plus, Share2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Plus, Share2, UserPlus } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from 'sonner';
 
@@ -54,7 +54,7 @@ const EventQR: React.FC = () => {
             variant="outline"
             fullWidth
           >
-            <Share2 size={16} />
+            <Share2 size={16} className="mr-2" />
             Copy Invite Link
           </Button>
         </div>
@@ -64,7 +64,7 @@ const EventQR: React.FC = () => {
             onClick={handleAddTransaction}
             fullWidth
           >
-            <Plus size={16} />
+            <Plus size={16} className="mr-2" />
             Add Transaction to Event
           </Button>
           
@@ -73,6 +73,7 @@ const EventQR: React.FC = () => {
             variant="outline"
             fullWidth
           >
+            <UserPlus size={16} className="mr-2" />
             Add People Manually
           </Button>
         </div>

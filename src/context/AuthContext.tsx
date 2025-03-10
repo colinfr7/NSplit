@@ -59,7 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: 'user_' + Math.random().toString(36).substr(2, 9),
         email: 'user@example.com',
         displayName: 'Demo User',
-        photoURL: 'https://via.placeholder.com/150',
+        photoURL: 'https://randomuser.me/api/portraits/people/32.jpg',
+        discordName: 'demo_user#1234'
       };
       
       setUser(mockUser);
