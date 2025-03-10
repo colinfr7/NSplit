@@ -1,9 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X, QrCode, Edit } from 'lucide-react';
+import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X, QrCode, Edit, Calendar } from 'lucide-react';
 import Button from '@/components/Button';
 import { toast } from "sonner";
 import { useAuth } from '@/context/AuthContext';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface Participant {
   id: string;
@@ -22,6 +27,7 @@ interface Event {
   id: string;
   title: string;
   isPublic?: boolean;
+  date: Date; // Added date property
 }
 
 const currencies: CurrencyOption[] = [
@@ -32,15 +38,15 @@ const currencies: CurrencyOption[] = [
   { code: 'GBP', symbol: '£', name: 'British Pound', rate: 1.27 },
 ];
 
-// Mock events data - in a real app this would come from an API
+// Mock events data with dates
 const mockEvents: Event[] = [
-  { id: '123', title: 'Weekend Trip', isPublic: true },
-  { id: '456', title: 'Dinner Party', isPublic: true },
-  { id: '789', title: 'Office Lunch', isPublic: false },
-  { id: '101', title: 'Birthday Celebration', isPublic: true },
-  { id: '102', title: 'Game Night', isPublic: true },
-  { id: '103', title: 'Movie Night', isPublic: false },
-  { id: '104', title: 'Beach Day', isPublic: true },
+  { id: '123', title: 'Weekend Trip', isPublic: true, date: new Date() },
+  { id: '456', title: 'Dinner Party', isPublic: true, date: new Date(Date.now() - 86400000) }, // Yesterday
+  { id: '789', title: 'Office Lunch', isPublic: false, date: new Date(Date.now() + 86400000) }, // Tomorrow
+  { id: '101', title: 'Birthday Celebration', isPublic: true, date: new Date(Date.now() + 86400000 * 2) }, // Day after tomorrow
+  { id: '102', title: 'Game Night', isPublic: true, date: new Date(Date.now() + 86400000 * 3) }, // Outside 2-day window
+  { id: '103', title: 'Movie Night', isPublic: false, date: new Date(Date.now() - 86400000 * 2) },
+  { id: '104', title: 'Beach Day', isPublic: true, date: new Date(Date.now() - 86400000 * 3) }, // Outside 2-day window
 ];
 
 const AddPayment: React.FC = () => {
@@ -62,6 +68,10 @@ const AddPayment: React.FC = () => {
   // Event editing
   const [isEditingEvent, setIsEditingEvent] = useState<boolean>(false);
   const [editedEventTitle, setEditedEventTitle] = useState<string>('');
+  
+  // Payment date
+  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   
   // QR code modal
   const [showQRModal, setShowQRModal] = useState<boolean>(false);
@@ -98,17 +108,35 @@ const AddPayment: React.FC = () => {
     }
   }, [loggedInUser.name, eventId, events]);
   
-  // Filter events based on search term
+  // Filter events based on search term and date (within 2 days)
   useEffect(() => {
+    // Time window: 2 days before and 2 days after today
+    const now = new Date();
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(now.getDate() - 2);
+    
+    const twoDaysFromNow = new Date(now);
+    twoDaysFromNow.setDate(now.getDate() + 2);
+    
+    // First, filter by search term
+    let filtered = events;
     if (eventSearchTerm) {
-      const filtered = events.filter(event => 
+      filtered = events.filter(event => 
         event.title.toLowerCase().includes(eventSearchTerm.toLowerCase())
       );
-      setFilteredEvents(filtered);
     } else {
-      // When empty, show only public events as suggestions
-      setFilteredEvents(events.filter(event => event.isPublic));
+      // When empty, filter by date and public status
+      filtered = events.filter(event => {
+        const eventDate = new Date(event.date);
+        return (
+          event.isPublic && 
+          eventDate >= twoDaysAgo && 
+          eventDate <= twoDaysFromNow
+        );
+      });
     }
+    
+    setFilteredEvents(filtered);
   }, [eventSearchTerm, events]);
   
   // Close dropdown when clicking outside
@@ -360,33 +388,53 @@ const AddPayment: React.FC = () => {
     setShowQRModal(false);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddPaymentAndQR = () => {
+    // Validate form
+    if (!validatePaymentForm()) return;
     
+    setLoading(true);
+    
+    setTimeout(() => {
+      toast.success("Payment added successfully!");
+      // Show QR code modal
+      setShowQRModal(true);
+      setLoading(false);
+    }, 1000);
+  };
+  
+  const validatePaymentForm = (): boolean => {
     if (!paymentTitle.trim()) {
       toast.error("Please enter a payment title");
-      return;
+      return false;
     }
     if (totalAmount === '' || parseFloat(totalAmount) <= 0) {
       toast.error("Please enter a valid total amount");
-      return;
+      return false;
     }
     if (!payer.trim()) {
       toast.error("Please select who paid");
-      return;
+      return false;
     }
     if (!selectedEvent) {
       toast.error("Please select or create an event");
-      return;
+      return false;
     }
     
     if (!splitEqually) {
       validateSplitAmounts();
       if (splitAmountError) {
         toast.error("The sum of individual amounts must equal the total amount");
-        return;
+        return false;
       }
     }
+    
+    return true;
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validatePaymentForm()) return;
     
     setLoading(true);
     
@@ -414,8 +462,31 @@ const AddPayment: React.FC = () => {
   // Get currently selected event
   const currentEvent = selectedEvent ? getEventById(selectedEvent) : undefined;
   
-  // Get public events for quick selection
-  const publicEvents = events.filter(event => event.isPublic);
+  // Get public events within 2 days for quick selection
+  const getRecentPublicEvents = (): Event[] => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(now.getDate() - 2);
+    
+    const twoDaysFromNow = new Date(now);
+    twoDaysFromNow.setDate(now.getDate() + 2);
+    
+    return events.filter(event => {
+      const eventDate = new Date(event.date);
+      return (
+        event.isPublic && 
+        eventDate >= twoDaysAgo && 
+        eventDate <= twoDaysFromNow
+      );
+    });
+  };
+  
+  const recentPublicEvents = getRecentPublicEvents();
+  
+  // Format date for display
+  const formatEventDate = (date: Date): string => {
+    return format(date, "MMM d");
+  };
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -443,6 +514,39 @@ const AddPayment: React.FC = () => {
               placeholder="Dinner, Taxi, Hotel, etc."
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
             />
+          </div>
+          
+          {/* Payment Date Picker */}
+          <div>
+            <label htmlFor="payment-date" className="block text-sm font-medium text-gray-700 mb-1">
+              Date
+            </label>
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <button
+                  id="payment-date"
+                  type="button"
+                  className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors bg-white text-left"
+                >
+                  <span>{format(paymentDate, "PPP")}</span>
+                  <Calendar size={16} className="text-gray-400" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <CalendarComponent
+                  mode="single"
+                  selected={paymentDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setPaymentDate(date);
+                      setShowDatePicker(false);
+                    }
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Enhanced Event Selection field */}
@@ -516,13 +620,14 @@ const AddPayment: React.FC = () => {
                               <span className={`${selectedEvent === event.id ? 'font-medium text-nsplit-600' : ''}`}>
                                 {event.title}
                               </span>
-                              <span className="flex items-center text-xs text-gray-500">
+                              <div className="flex items-center text-xs text-gray-500">
+                                <span className="mr-2">{formatEventDate(event.date)}</span>
                                 {event.isPublic ? (
-                                  <Globe size={14} className="ml-2 text-green-500" />
+                                  <Globe size={14} className="text-green-500" />
                                 ) : (
-                                  <Lock size={14} className="ml-2 text-gray-400" />
+                                  <Lock size={14} className="text-gray-400" />
                                 )}
-                              </span>
+                              </div>
                             </div>
                           </li>
                         ))}
@@ -559,11 +664,11 @@ const AddPayment: React.FC = () => {
             )}
             
             {/* Public events quick selection (show only if not editing and no event selected) */}
-            {!isEditingEvent && !currentEvent && publicEvents.length > 0 && (
+            {!isEditingEvent && !currentEvent && recentPublicEvents.length > 0 && (
               <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-2">Public Events</p>
+                <p className="text-xs text-gray-500 mb-2">Recent Events</p>
                 <div className="flex flex-wrap gap-2">
-                  {publicEvents.slice(0, 5).map(event => (
+                  {recentPublicEvents.slice(0, 5).map(event => (
                     <button
                       key={event.id}
                       type="button"
@@ -575,17 +680,18 @@ const AddPayment: React.FC = () => {
                       }`}
                     >
                       {event.title}
-                      <Globe size={12} className="ml-1.5 text-green-500" />
+                      <span className="mx-1 text-xs text-gray-500">{formatEventDate(event.date)}</span>
+                      <Globe size={12} className="text-green-500" />
                     </button>
                   ))}
                   
-                  {publicEvents.length > 5 && (
+                  {recentPublicEvents.length > 5 && (
                     <button
                       type="button"
                       onClick={() => setShowEventDropdown(true)}
                       className="px-3 py-1.5 text-sm rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
                     >
-                      +{publicEvents.length - 5} more
+                      +{recentPublicEvents.length - 5} more
                     </button>
                   )}
                 </div>
@@ -598,13 +704,14 @@ const AddPayment: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
                     <span className="font-medium">{currentEvent.title}</span>
+                    <span className="mx-2 text-sm text-gray-500">{formatEventDate(currentEvent.date)}</span>
                     {currentEvent.isPublic ? (
-                      <span className="ml-2 flex items-center text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      <span className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                         <Globe size={12} className="mr-1" />
                         Public
                       </span>
                     ) : (
-                      <span className="ml-2 flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <span className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
                         <Lock size={12} className="mr-1" />
                         Private
                       </span>
@@ -692,66 +799,13 @@ const AddPayment: React.FC = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Paid By
-            </label>
-            <div className="space-y-3">
-              {participants.map(participant => (
-                <label key={participant.id} className="flex items-center">
-                  <input
-                    type="radio"
-                    name="payer"
-                    value={participant.name}
-                    checked={payer === participant.name}
-                    onChange={() => setPayer(participant.name)}
-                    className="mr-2 focus:ring-nsplit-500 focus:border-nsplit-500"
-                  />
-                  {participant.name}
-                  {participant.id === loggedInUser.id && (
-                    <span className="ml-1 text-xs font-medium text-nsplit-600">(You)</span>
-                  )}
-                </label>
-              ))}
-            </div>
-            
-            {/* Participant Management Options - Directly connected to Paid By */}
-            <div className="mt-3 flex flex-wrap items-center gap-2 pl-6">
-              <button
-                type="button"
-                onClick={() => setShowQRModal(true)}
-                className="text-xs flex items-center text-nsplit-600 bg-nsplit-50 px-2 py-1 rounded border border-nsplit-100 hover:bg-nsplit-100"
-              >
-                <QrCode size={12} className="mr-1" />
-                Share QR Code
-              </button>
-              
-              <div className="relative flex items-center flex-grow max-w-xs">
-                <input
-                  type="text"
-                  value={newParticipantName}
-                  onChange={(e) => setNewParticipantName(e.target.value)}
-                  placeholder="Add participant..."
-                  className="w-full py-1 px-3 text-sm border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={addParticipant}
-                  disabled={!newParticipantName.trim()}
-                  className="px-2 py-1 bg-nsplit-500 text-white rounded-r-md hover:bg-nsplit-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <label className="block text-sm font-medium text-gray-700 mr-2">
-                  Split Between
-                </label>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                <div className="flex items-center">
+                  <Users size={16} className="mr-2" />
+                  Participants
+                </div>
+              </label>
               <button
                 type="button"
                 onClick={toggleSplitEqually}
@@ -759,6 +813,53 @@ const AddPayment: React.FC = () => {
               >
                 {splitEqually ? 'Split unequally' : 'Split equally'}
               </button>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Paid By</p>
+                <div className="space-y-2">
+                  {participants.map(participant => (
+                    <label key={participant.id} className="flex items-center">
+                      <input
+                        type="radio"
+                        name="payer"
+                        value={participant.name}
+                        checked={payer === participant.name}
+                        onChange={() => setPayer(participant.name)}
+                        className="mr-2 focus:ring-nsplit-500 focus:border-nsplit-500"
+                      />
+                      {participant.name}
+                      {participant.id === loggedInUser.id && (
+                        <span className="ml-1 text-xs font-medium text-nsplit-600">(You)</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Add participants section */}
+              <div className="flex items-center space-x-2 mb-3">
+                <input
+                  type="text"
+                  value={newParticipantName}
+                  onChange={(e) => setNewParticipantName(e.target.value)}
+                  placeholder="Add participant..."
+                  className="flex-grow px-4 py-2 border border-gray-300 rounded-l-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={addParticipant}
+                  disabled={!newParticipantName.trim()}
+                  className="h-[40px] w-[40px] flex items-center justify-center bg-nsplit-500 text-white rounded-r-md hover:bg-nsplit-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mb-2">
+                You can add more participants later by sharing a QR code after creating the payment.
+              </p>
             </div>
             
             {/* Split amount summary feedback */}
@@ -834,9 +935,19 @@ const AddPayment: React.FC = () => {
             </div>
           </div>
           
-          <div className="pt-4">
+          <div className="pt-4 space-y-3">
             <Button type="submit" fullWidth isLoading={loading}>
               Add Payment
+            </Button>
+            
+            <Button 
+              type="button" 
+              variant="outline" 
+              fullWidth 
+              onClick={handleAddPaymentAndQR} 
+              isLoading={loading}
+            >
+              Add Payment & Create QR Code
             </Button>
           </div>
         </form>

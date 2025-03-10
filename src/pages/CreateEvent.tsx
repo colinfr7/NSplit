@@ -31,8 +31,13 @@ const CreateEvent: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState('');
-  const [eventDate, setEventDate] = useState<Date>(new Date()); // Default to today's date
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Event date settings
+  const [startDate, setStartDate] = useState<Date>(new Date()); // Default to today
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined); // For multi-day events
+  const [isMultiDay, setIsMultiDay] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   
   // Add the current user automatically when the component mounts
   useEffect(() => {
@@ -51,6 +56,38 @@ const CreateEvent: React.FC = () => {
       });
     }
   }, [user]);
+  
+  const toggleMultiDayEvent = () => {
+    if (!isMultiDay) {
+      // When enabling multi-day, set end date to start date if not set
+      if (!endDate) {
+        setEndDate(startDate);
+      }
+    } else {
+      // When disabling multi-day, clear end date
+      setEndDate(undefined);
+    }
+    setIsMultiDay(!isMultiDay);
+  };
+  
+  const handleStartDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setStartDate(date);
+      setShowStartDatePicker(false);
+      
+      // If end date is before start date, update it
+      if (endDate && date > endDate) {
+        setEndDate(date);
+      }
+    }
+  };
+  
+  const handleEndDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setEndDate(date);
+      setShowEndDatePicker(false);
+    }
+  };
   
   const addParticipant = () => {
     // Check if there's a name in the input field
@@ -123,6 +160,12 @@ const CreateEvent: React.FC = () => {
       return;
     }
     
+    // Check dates for multi-day events
+    if (isMultiDay && (!endDate || endDate < startDate)) {
+      toast.error("End date must be after start date");
+      return;
+    }
+    
     // Simulate form submission
     setLoading(true);
     
@@ -148,6 +191,12 @@ const CreateEvent: React.FC = () => {
       return;
     }
     
+    // Check dates for multi-day events
+    if (isMultiDay && (!endDate || endDate < startDate)) {
+      toast.error("End date must be after start date");
+      return;
+    }
+    
     // Simulate event creation
     setLoading(true);
     
@@ -165,6 +214,13 @@ const CreateEvent: React.FC = () => {
     user.name.toLowerCase().includes(newParticipantName.toLowerCase()) &&
     !participants.some(p => p.id === user.id)
   );
+  
+  const formatDateRange = () => {
+    if (isMultiDay && endDate) {
+      return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
+    }
+    return format(startDate, "PPP");
+  };
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -194,37 +250,77 @@ const CreateEvent: React.FC = () => {
             />
           </div>
 
-          {/* Event Date Picker */}
+          {/* Event Date Section */}
           <div>
-            <label htmlFor="event-date" className="block text-sm font-medium text-gray-700 mb-1">
-              Event Date
-            </label>
-            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-              <PopoverTrigger asChild>
-                <button
-                  id="event-date"
-                  type="button"
-                  className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors bg-white text-left"
-                >
-                  <span>{format(eventDate, "PPP")}</span>
-                  <Calendar size={16} className="text-gray-400" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0">
-                <CalendarComponent
-                  mode="single"
-                  selected={eventDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setEventDate(date);
-                      setShowDatePicker(false);
-                    }
-                  }}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Event Date
+              </label>
+              <div className="flex items-center">
+                <Switch 
+                  checked={isMultiDay} 
+                  onCheckedChange={toggleMultiDayEvent}
+                  className="mr-2"
                 />
-              </PopoverContent>
-            </Popover>
+                <span className="text-sm text-gray-700">Multi-day event</span>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Start Date */}
+              <Popover open={showStartDatePicker} onOpenChange={setShowStartDatePicker}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors bg-white text-left"
+                  >
+                    <span>{isMultiDay ? `Start: ${format(startDate, "MMM d, yyyy")}` : format(startDate, "PPP")}</span>
+                    <Calendar size={16} className="text-gray-400" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateSelect}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              {/* End Date (only if multi-day is enabled) */}
+              {isMultiDay && (
+                <Popover open={showEndDatePicker} onOpenChange={setShowEndDatePicker}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md focus:ring-nsplit-500 focus:border-nsplit-500 outline-none transition-colors bg-white text-left"
+                    >
+                      <span>End: {endDate ? format(endDate, "MMM d, yyyy") : "Select end date"}</span>
+                      <Calendar size={16} className="text-gray-400" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={handleEndDateSelect}
+                      disabled={(date) => date < startDate}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+              
+              {/* Visual Date Range Display */}
+              {isMultiDay && endDate && (
+                <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded-md">
+                  Event duration: {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} days
+                </p>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center justify-between">
@@ -358,7 +454,7 @@ const CreateEvent: React.FC = () => {
               <button
                 type="button"
                 onClick={addParticipant}
-                className="px-3 py-2 bg-nsplit-600 text-white rounded-r-md hover:bg-nsplit-700 focus:outline-none focus:ring-2 focus:ring-nsplit-500"
+                className="h-[40px] w-[40px] flex items-center justify-center bg-nsplit-600 text-white rounded-r-md hover:bg-nsplit-700 focus:outline-none focus:ring-2 focus:ring-nsplit-500"
               >
                 <Check size={16} />
               </button>
