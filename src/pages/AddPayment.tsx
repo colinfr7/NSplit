@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X, QrCode, Edit, Calendar } from 'lucide-react';
@@ -86,6 +87,9 @@ const AddPayment: React.FC = () => {
 
   const [splitAmountError, setSplitAmountError] = useState<boolean>(false);
   const [splitAmountDifference, setSplitAmountDifference] = useState<number>(0);
+  
+  // Fix: Add the missing numericTotalAmount variable
+  const numericTotalAmount = totalAmount === '' ? 0 : parseFloat(totalAmount);
   
   useEffect(() => {
     setPayer(loggedInUser.name);
@@ -417,12 +421,6 @@ const AddPayment: React.FC = () => {
     }, 1000);
   };
   
-  const getTotalParticipantsAmount = (): number => {
-    return participants.reduce((sum, p) => {
-      return sum + (p.amount === null ? 0 : p.amount * selectedCurrency.rate);
-    }, 0);
-  };
-  
   const getParticipantBalance = (participant: Participant): number => {
     if (participant.amount === null) return 0;
     
@@ -442,6 +440,22 @@ const AddPayment: React.FC = () => {
   const formatEventDate = (date: Date): string => {
     return format(date, "MMM d");
   };
+  
+  // Fix: Get the current event
+  const currentEvent = events.find(e => e.id === selectedEvent);
+  
+  // Fix: Get recent public events
+  const now = new Date();
+  const twoDaysAgo = new Date(now);
+  twoDaysAgo.setDate(now.getDate() - 2);
+  
+  const twoDaysFromNow = new Date(now);
+  twoDaysFromNow.setDate(now.getDate() + 2);
+  
+  const recentPublicEvents = events.filter(event => {
+    const eventDate = new Date(event.date);
+    return event.isPublic && eventDate >= twoDaysAgo && eventDate <= twoDaysFromNow;
+  });
   
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -865,5 +879,114 @@ const AddPayment: React.FC = () => {
                             <span className="font-medium text-sm text-gray-900">
                               {participant.name}
                               {participant.id === loggedInUser.id && (
-                               
+                                <span className="ml-1 text-xs font-medium text-nsplit-600">(You)</span>
+                              )}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 whitespace-nowrap text-right">
+                          {splitEqually ? (
+                            <span className="text-sm text-gray-900">
+                              ${participant.amount !== null ? (participant.amount * selectedCurrency.rate).toFixed(2) : '0.00'}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={participant.amount !== null ? participant.amount.toString() : ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                  const numericValue = value === '' ? null : parseFloat(value);
+                                  handleParticipantAmountChange(participant.id, numericValue);
+                                }
+                              }}
+                              className="w-20 px-2 py-1 text-right border border-gray-300 rounded-md text-sm"
+                              placeholder="0.00"
+                            />
+                          )}
+                        </td>
+                        <td className="py-2 px-3 whitespace-nowrap text-right">
+                          <span className={`text-sm ${isReceiving ? 'text-green-600' : 'text-red-600'}`}>
+                            {isReceiving ? `+$${Math.abs(balance).toFixed(2)}` : `-$${Math.abs(balance).toFixed(2)}`}
+                          </span>
+                        </td>
+                        <td className="py-2 px-1 whitespace-nowrap text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeParticipant(participant.id)}
+                            className="text-gray-400 hover:text-red-500"
+                            title="Remove participant"
+                          >
+                            <X size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div className="pt-6 flex flex-col sm:flex-row gap-4">
+            <Button 
+              type="button" 
+              onClick={handleAddPaymentAndQR}
+              fullWidth
+              isLoading={loading}
+              className="order-1 sm:order-1"
+            >
+              <QrCode size={18} className="mr-2" />
+              Add Payment & Create QR Code
+            </Button>
+            
+            <Button 
+              type="submit" 
+              variant="outline"
+              fullWidth
+              isLoading={loading}
+              className="order-2 sm:order-2"
+            >
+              Add Payment
+            </Button>
+          </div>
+        </form>
+        
+        {showQRModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold">Share QR Code</h2>
+                <button 
+                  onClick={closeQRModal}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="flex flex-col items-center p-4">
+                <div className="bg-gray-100 p-6 rounded-lg mb-4">
+                  <QrCode size={180} className="text-nsplit-700" />
+                </div>
+                
+                <p className="text-center text-sm text-gray-600 mb-4">
+                  Share this QR code with others to let them join this payment.
+                </p>
+                
+                <Button 
+                  onClick={closeQRModal}
+                  fullWidth
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
+export default AddPayment;
