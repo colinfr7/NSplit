@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -22,7 +22,7 @@ const Header: React.FC = () => {
   };
   
   const handleLogout = () => {
-    logout();
+    signOut();
     navigate('/');
   };
   
