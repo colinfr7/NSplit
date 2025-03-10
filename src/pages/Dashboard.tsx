@@ -1,20 +1,50 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, Send, CreditCard, Users, Filter, CheckCircle, CircleDollarSign, Calendar, Bell, X } from 'lucide-react';
 import Button from '@/components/Button';
 import EventCard from '@/components/EventCard';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import ExpenseCard from '@/components/ExpenseCard';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [showCompleted, setShowCompleted] = useState(false);
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'owe' | 'owed'>('all');
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    type: 'crypto_completed' | 'cash_pending';
+    amount: number;
+    from: string;
+    to: string;
+    date: string;
+    event?: string;
+    needsConfirmation?: boolean;
+  }>>([
+    {
+      id: 'notif1',
+      type: 'crypto_completed',
+      amount: 25.50,
+      from: 'Jamie',
+      to: 'You',
+      date: '2 hours ago',
+      event: 'Weekend Trip to Bali'
+    },
+    {
+      id: 'notif2',
+      type: 'cash_pending',
+      amount: 15.75,
+      from: 'Morgan',
+      to: 'You',
+      date: '1 day ago',
+      event: 'Dinner at Bottega',
+      needsConfirmation: true
+    }
+  ]);
   
   // Redirect if not authenticated
   React.useEffect(() => {
@@ -119,6 +149,13 @@ const Dashboard: React.FC = () => {
     }
   ];
   
+  // Calculate total events and transactions statistics
+  const totalEvents = events.length;
+  const totalTransactions = events.reduce((sum, event) => sum + event.expenses.length, 0);
+  const totalSplitTransactions = events.reduce((sum, event) => {
+    return sum + event.expenses.filter(exp => exp.splitBetween.length > 1).length;
+  }, 0);
+  
   // Calculate total balance
   const totalBalance = events.reduce((sum, event) => sum + (event.userBalance || 0), 0);
   const isPositiveTotalBalance = totalBalance >= 0;
@@ -148,13 +185,40 @@ const Dashboard: React.FC = () => {
   });
   
   const handlePayNow = (userId: string, amount: number) => {
-    toast.success(`Payment of $${amount.toFixed(2)} initiated`);
+    toast({
+      title: "Payment Initiated",
+      description: `Payment of $${amount.toFixed(2)} initiated`,
+    });
     // In a real app, this would open a payment flow
   };
   
   const handleSendReminder = (userId: string, amount: number) => {
-    toast.success(`Reminder sent to collect $${amount.toFixed(2)}`);
+    toast({
+      title: "Reminder Sent",
+      description: `Reminder sent to collect $${amount.toFixed(2)}`,
+    });
     // In a real app, this would send a notification/email
+  };
+
+  const handleMarkAsCompleted = (actionId: string) => {
+    toast({
+      title: "Payment Completed",
+      description: "The payment has been marked as completed",
+    });
+    // In a real app, this would update the payment status
+  };
+
+  const handleConfirmCashPayment = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    toast({
+      title: "Payment Confirmed",
+      description: "You have confirmed receiving this cash payment",
+    });
+    // In a real app, this would update the payment status
+  };
+
+  const handleDismissNotification = (notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
   };
   
   if (!isAuthenticated) {
@@ -221,11 +285,78 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Notifications Section */}
+        {notifications.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center mb-4">
+              <Bell size={18} className="mr-2 text-nsplit-600" />
+              <h2 className="text-lg font-semibold">Notifications</h2>
+            </div>
+            
+            <div className="space-y-3">
+              {notifications.map(notification => (
+                <Alert key={notification.id} className={notification.type === 'crypto_completed' ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}>
+                  <div className="flex justify-between">
+                    <div>
+                      <AlertTitle className="font-medium">
+                        {notification.type === 'crypto_completed' 
+                          ? 'Payment Completed' 
+                          : 'Payment Confirmation Required'}
+                      </AlertTitle>
+                      <AlertDescription>
+                        <p className="mt-1">
+                          {notification.type === 'crypto_completed' 
+                            ? `${notification.from} sent you $${notification.amount.toFixed(2)} via crypto payment.` 
+                            : `${notification.from} marked a cash payment of $${notification.amount.toFixed(2)} as completed.`}
+                        </p>
+                        {notification.event && (
+                          <p className="text-sm text-gray-600 mt-1">Event: {notification.event}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">{notification.date}</p>
+                        
+                        {notification.needsConfirmation && (
+                          <Button 
+                            size="sm" 
+                            className="mt-3"
+                            onClick={() => handleConfirmCashPayment(notification.id)}
+                          >
+                            <CheckCircle size={14} className="mr-1" />
+                            Confirm Receipt
+                          </Button>
+                        )}
+                      </AlertDescription>
+                    </div>
+                    <button 
+                      onClick={() => handleDismissNotification(notification.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </Alert>
+              ))}
+            </div>
+          </div>
+        )}
         
         {/* Settlements - Improved filter UX */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">Settlements</h2>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showCompleted}
+                onCheckedChange={setShowCompleted}
+                id="show-completed"
+              />
+              <label
+                htmlFor="show-completed"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Include completed
+              </label>
+            </div>
           </div>
           
           {/* Improved filter UI */}
@@ -261,22 +392,6 @@ const Dashboard: React.FC = () => {
               >
                 Owed to You
               </button>
-            </div>
-            
-            <div className="flex items-center justify-end">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={showCompleted}
-                  onCheckedChange={setShowCompleted}
-                  id="show-completed"
-                />
-                <label
-                  htmlFor="show-completed"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  Include completed
-                </label>
-              </div>
             </div>
           </div>
           
@@ -328,24 +443,46 @@ const Dashboard: React.FC = () => {
                       </p>
                       
                       {action.status === 'pending' && (
-                        action.type === 'owe' ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handlePayNow(action.user, action.amount)}
-                          >
-                            <CreditCard size={14} className="mr-1" />
-                            Pay Now
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSendReminder(action.user, action.amount)}
-                          >
-                            <Send size={14} className="mr-1" />
-                            Remind
-                          </Button>
-                        )
+                        <div className="flex flex-col space-y-2">
+                          {action.type === 'owe' ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handlePayNow(action.user, action.amount)}
+                              >
+                                <CreditCard size={14} className="mr-1" />
+                                Pay Now
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsCompleted(action.id)}
+                              >
+                                <CheckCircle size={14} className="mr-1" />
+                                Mark as Completed
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendReminder(action.user, action.amount)}
+                              >
+                                <Send size={14} className="mr-1" />
+                                Remind
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsCompleted(action.id)}
+                              >
+                                <CheckCircle size={14} className="mr-1" />
+                                Mark as Completed
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       )}
                       
                       {action.status === 'completed' && (
@@ -374,7 +511,12 @@ const Dashboard: React.FC = () => {
         {/* Events and Payments Section */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold">Your Events and Payments</h2>
+            <div>
+              <h2 className="text-lg font-semibold">Your Events and Payments</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                {totalEvents} events • {totalTransactions} transactions • {totalSplitTransactions} split transactions
+              </p>
+            </div>
             <div className="flex space-x-3">
               <Button 
                 onClick={() => navigate('/create-event')}
@@ -398,24 +540,24 @@ const Dashboard: React.FC = () => {
             <div className="space-y-8">
               {events.map(event => (
                 <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                  {/* Event Card */}
-                  <div className="cursor-pointer" onClick={() => navigate(`/event/${event.id}`)}>
-                    <EventCard event={event} />
-                  </div>
-                  
-                  {/* Add Payment button for each event */}
-                  <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/event/${event.id}/add-payment`);
-                      }}
-                    >
-                      <Plus size={14} className="mr-1" />
-                      Add Payment
-                    </Button>
+                  {/* Event Card with Add Payment button in top-right */}
+                  <div className="relative">
+                    <div onClick={() => navigate(`/event/${event.id}`)}>
+                      <EventCard event={event} />
+                    </div>
+                    <div className="absolute top-4 right-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/event/${event.id}/add-payment`);
+                        }}
+                      >
+                        <Plus size={14} className="mr-1" />
+                        Add Payment
+                      </Button>
+                    </div>
                   </div>
                   
                   {/* Event Summary */}
@@ -458,26 +600,43 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     {/* Event balance summary */}
-                    {event.userBalance !== 0 && (
+                    {event.userBalance !== undefined && (
                       <div className={`mt-4 p-3 rounded-lg border ${
                         event.userBalance > 0
                           ? 'bg-green-50 border-green-100'
-                          : 'bg-red-50 border-red-100'
+                          : event.userBalance < 0
+                            ? 'bg-red-50 border-red-100'
+                            : 'bg-gray-50 border-gray-100'
                       }`}>
                         <p className="font-medium text-sm">
                           Balance for this event: 
                           <span className={`ml-2 ${
                             event.userBalance > 0
                               ? 'text-green-600'
-                              : 'text-red-600'
+                              : event.userBalance < 0
+                                ? 'text-red-600'
+                                : 'text-gray-600'
                           }`}>
                             {event.userBalance > 0 
                               ? `You get back $${event.userBalance.toFixed(2)}` 
-                              : `You owe $${Math.abs(event.userBalance).toFixed(2)}`}
+                              : event.userBalance < 0
+                                ? `You owe $${Math.abs(event.userBalance).toFixed(2)}`
+                                : 'Settled'}
                           </span>
                         </p>
                       </div>
                     )}
+
+                    {/* Add Payment button at bottom */}
+                    <div className="mt-4 flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/event/${event.id}/add-payment`)}
+                      >
+                        <Plus size={14} className="mr-1" />
+                        Add Payment
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
