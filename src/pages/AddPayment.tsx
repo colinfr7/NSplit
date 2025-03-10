@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, DollarSign, User, Users, Plus, Minus, AlertCircle, CheckCircle, Search, Globe, Lock, X, QrCode, Edit, Calendar } from 'lucide-react';
@@ -36,6 +35,7 @@ const currencies: CurrencyOption[] = [
   { code: 'USD', symbol: '$', name: 'US Dollar', rate: 1 },
   { code: 'EUR', symbol: '€', name: 'Euro', rate: 1.08 },
   { code: 'GBP', symbol: '£', name: 'British Pound', rate: 1.27 },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', rate: 0.75 }, // Added Singapore Dollar
 ];
 
 const mockEvents: Event[] = [
@@ -88,7 +88,6 @@ const AddPayment: React.FC = () => {
   const [splitAmountError, setSplitAmountError] = useState<boolean>(false);
   const [splitAmountDifference, setSplitAmountDifference] = useState<number>(0);
   
-  // Fix: Add the missing numericTotalAmount variable
   const numericTotalAmount = totalAmount === '' ? 0 : parseFloat(totalAmount);
   
   useEffect(() => {
@@ -441,10 +440,8 @@ const AddPayment: React.FC = () => {
     return format(date, "MMM d");
   };
   
-  // Fix: Get the current event
   const currentEvent = events.find(e => e.id === selectedEvent);
   
-  // Fix: Get recent public events
   const now = new Date();
   const twoDaysAgo = new Date(now);
   twoDaysAgo.setDate(now.getDate() - 2);
@@ -638,15 +635,15 @@ const AddPayment: React.FC = () => {
                       key={event.id}
                       type="button"
                       onClick={() => handleSelectEvent(event)}
-                      className={`px-3 py-1.5 text-sm rounded-full flex items-center ${
+                      className={`px-2 py-1 text-xs rounded-full flex items-center truncate max-w-full ${
                         selectedEvent === event.id 
                           ? 'bg-nsplit-100 text-nsplit-700 font-medium' 
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      {event.title}
-                      <span className="mx-1 text-xs text-gray-500">{formatEventDate(event.date)}</span>
-                      <Globe size={12} className="text-green-500" />
+                      <span className="truncate max-w-[100px]">{event.title}</span>
+                      <span className="mx-1 text-xs text-gray-500 whitespace-nowrap">{formatEventDate(event.date)}</span>
+                      <Globe size={10} className="text-green-500 flex-shrink-0" />
                     </button>
                   ))}
                   
@@ -654,7 +651,7 @@ const AddPayment: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowEventDropdown(true)}
-                      className="px-3 py-1.5 text-sm rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
+                      className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
                     >
                       +{recentPublicEvents.length - 5} more
                     </button>
@@ -725,24 +722,24 @@ const AddPayment: React.FC = () => {
                 />
               </div>
               
-              <div className="mt-2 p-3 rounded-md bg-gradient-to-r from-nsplit-50 to-blue-50 border border-nsplit-100 shadow-sm">
+              <div className="mt-2 p-3 rounded-md bg-gradient-to-r from-blue-50 to-blue-50 border border-blue-100 shadow-sm w-full">
                 <div className="flex flex-col">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-gray-500">USDC Equivalent:</span>
+                    <span className="text-sm text-gray-600">USDC Equivalent:</span>
                     <span className="text-xl font-semibold text-nsplit-800">
                       ${numericTotalAmount > 0 
                         ? (numericTotalAmount * selectedCurrency.rate).toFixed(2) 
                         : '0.00'}
                     </span>
                   </div>
-                  <div className="text-xs text-nsplit-600 mt-1 flex justify-end items-center">
+                  <div className="text-xs text-blue-600 mt-1 flex justify-end items-center">
                     <span>Rate: 1 {selectedCurrency.code} = {selectedCurrency.rate} USDC</span>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="md:w-1/3">
+            <div className="md:w-1/4">
               <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
                 Currency
               </label>
@@ -827,36 +824,6 @@ const AddPayment: React.FC = () => {
               </button>
             </div>
             
-            {!splitEqually && totalAmount !== '' && (
-              <div className={`mb-3 p-2 rounded-md flex items-center ${
-                splitAmountError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-              }`}>
-                {splitAmountError ? (
-                  <>
-                    <AlertCircle size={16} className="mr-1" />
-                    <div className="text-sm">
-                      <span className="font-medium">Amounts don't match: </span>
-                      <span>Total: ${(numericTotalAmount * selectedCurrency.rate).toFixed(2)}, </span>
-                      <span>Split sum: ${getTotalParticipantsAmount().toFixed(2)}, </span>
-                      <span>Difference: ${splitAmountDifference.toFixed(2)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={16} className="mr-1" />
-                    <span className="text-sm font-medium">Amounts match</span>
-                  </>
-                )}
-              </div>
-            )}
-            
-            <div className="mb-3 p-2 bg-blue-50 rounded-md text-blue-700 text-sm flex items-center">
-              <div className="text-sm">
-                <span className="font-medium">Current split: </span>
-                <span>Split will be recalculated if more participants are added later.</span>
-              </div>
-            </div>
-            
             <div className="rounded-md border border-gray-200 overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -925,6 +892,36 @@ const AddPayment: React.FC = () => {
                   })}
                 </tbody>
               </table>
+            </div>
+            
+            {!splitEqually && totalAmount !== '' && (
+              <div className={`mt-3 p-2 rounded-md flex items-center ${
+                splitAmountError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+              }`}>
+                {splitAmountError ? (
+                  <>
+                    <AlertCircle size={16} className="mr-1" />
+                    <div className="text-sm">
+                      <span className="font-medium">Amounts don't match: </span>
+                      <span>Total: ${(numericTotalAmount * selectedCurrency.rate).toFixed(2)}, </span>
+                      <span>Split sum: ${getTotalParticipantsAmount().toFixed(2)}, </span>
+                      <span>Difference: ${splitAmountDifference.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} className="mr-1" />
+                    <span className="text-sm font-medium">Amounts match</span>
+                  </>
+                )}
+              </div>
+            )}
+            
+            <div className="mt-3 p-3 rounded-md bg-blue-50 border border-blue-100 text-gray-700 text-sm flex items-center">
+              <div className="text-sm">
+                <span className="font-medium">Current split: </span>
+                <span>Split will be recalculated if more participants are added later.</span>
+              </div>
             </div>
           </div>
           

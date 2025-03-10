@@ -293,7 +293,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="text-sm flex items-center">
-                      {notification.from} sent you <span className={`mx-1 font-medium ${notification.type === 'crypto_completed' ? 'text-green-600' : 'text-gray-700'}`}>${notification.amount.toFixed(2)}</span> 
+                      {notification.from} sent you <span className="mx-1 font-medium text-green-600">${notification.amount.toFixed(2)}</span> 
                       {notification.type === 'crypto_completed' ? 'via crypto payment' : 'in cash'}
                     </p>
                     {notification.event && (
@@ -303,7 +303,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {notification.needsConfirmation && (
-                      <>
+                      <div className="flex flex-col items-end space-y-1">
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -314,7 +314,7 @@ const Dashboard: React.FC = () => {
                         </Button>
                         <a 
                           href="#" 
-                          className="text-xs text-red-500 hover:text-red-700 underline whitespace-nowrap"
+                          className="text-xs text-gray-500 hover:text-gray-700 underline"
                           onClick={(e) => {
                             e.preventDefault();
                             handleReportMissingPayment(notification.id);
@@ -322,7 +322,7 @@ const Dashboard: React.FC = () => {
                         >
                           Report Missing
                         </a>
-                      </>
+                      </div>
                     )}
                     <button 
                       onClick={() => handleDismissNotification(notification.id)}
@@ -338,24 +338,24 @@ const Dashboard: React.FC = () => {
         )}
         
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Settlements</h2>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={showCompleted}
-                  onCheckedChange={setShowCompleted}
-                  id="show-completed"
-                />
-                <label
-                  htmlFor="show-completed"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  Include completed
-                </label>
-              </div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold">Settlements</h2>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showCompleted}
+                onCheckedChange={setShowCompleted}
+                id="show-completed"
+              />
+              <label
+                htmlFor="show-completed"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Include completed
+              </label>
             </div>
-            
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-col mb-5">
               <div className="flex gap-2 mb-3">
                 <button 
@@ -548,7 +548,7 @@ const Dashboard: React.FC = () => {
                 <div key={event.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="relative">
                     <div 
-                      className="bg-white p-5 cursor-pointer border-b border-gray-200"
+                      className="bg-white p-5 cursor-pointer"
                       onClick={() => navigate(`/event/${event.id}`)}
                     >
                       <h3 className="font-medium text-lg text-gray-900">{event.title}</h3>

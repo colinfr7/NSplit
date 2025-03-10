@@ -1,20 +1,19 @@
-
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Toaster } from 'sonner';
+import { AuthProvider } from './context/AuthContext';
 import Header from './components/Header';
 import Index from './pages/Index';
-import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
 import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import AddPayment from './pages/AddPayment';
 import CryptoPayment from './pages/CryptoPayment';
+import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
-import { AuthProvider } from './context/AuthContext';
-import { Toaster } from './components/ui/toaster';
 
 const queryClient = new QueryClient();
 
@@ -22,25 +21,27 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
+        <BrowserRouter>
+          <div className="relative flex min-h-screen flex-col">
             <Header />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/sign-in" element={<SignIn />} />
-              <Route path="/sign-up" element={<SignUp />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/create-event" element={<CreateEvent />} />
-              <Route path="/event/:id" element={<EventDetail />} />
-              <Route path="/event/:id/add-payment" element={<AddPayment />} />
-              <Route path="/add-payment" element={<AddPayment />} />
-              <Route path="/crypto-payment" element={<CryptoPayment />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <main className="flex-1">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/sign-up" element={<SignUp />} />
+                <Route path="/sign-in" element={<SignIn />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/create-event" element={<CreateEvent />} />
+                <Route path="/event/:eventId" element={<EventDetail />} />
+                <Route path="/event/:eventId/add-payment" element={<AddPayment />} />
+                <Route path="/add-payment" element={<AddPayment />} />
+                <Route path="/crypto-payment" element={<CryptoPayment />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
             <Toaster />
           </div>
-        </Router>
+        </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
   );
